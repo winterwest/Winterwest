@@ -1,289 +1,894 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Couples Backgammon</title>
-    <!-- Include Supabase JS Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #2c3e50;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0;
-            padding: 10px;
-        }
-        h2 { margin: 5px; }
-        #controls { margin-bottom: 15px; text-align: center; }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:disabled { background-color: #7f8c8d; }
-        
-        /* The Board */
-        #board {
-            display: grid;
-            grid-template-columns: repeat(13, 1fr);
-            grid-template-rows: repeat(2, 200px);
-            gap: 2px;
-            background-color: #8e44ad;
-            padding: 10px;
-            border: 8px solid #5e2780;
-            border-radius: 10px;
-            max-width: 600px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .point {
-            background-color: #34495e;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            position: relative;
-            cursor: pointer;
-            border-radius: 3px;
-        }
-        /* Top row points down, bottom row points up */
-        #board div:nth-child(n+14) {
-            flex-direction: column-reverse;
-        }
-        /* Alternating point colors */
-        .point.alt { background-color: #2c3e50; }
-        .point.selected { border: 2px solid #f1c40f; box-sizing: border-box;}
-        
-        /* The Bar (Middle divider for captured pieces) */
-        .bar {
-            grid-column: 7;
-            grid-row: 1 / span 2;
-            background-color: #5e2780;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Couples Backgammon</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
 
-        /* Checkers */
-        .checker {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            margin: -4px 0; /* Stack them overlapping slightly */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: inline-block;
-        }
-        .checker.red { background-color: #e74c3c; border: 2px solid #c0392b; }
-        .checker.white { background-color: #ecf0f1; border: 2px solid #bdc3c7; }
-    </style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a252f;
+      color: #ecf0f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 16px 8px;
+      min-height: 100vh;
+    }
+
+    h2 { margin: 0 0 10px; font-size: 1.4rem; letter-spacing: 1px; }
+
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    #turn-indicator {
+      font-size: 1rem;
+      font-weight: bold;
+      background: #2c3e50;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    #dice-display {
+      font-size: 1.3rem;
+      min-width: 80px;
+    }
+
+    button {
+      padding: 9px 22px;
+      font-size: 15px;
+      background: #e67e22;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) { background: #cf6d17; }
+    button:disabled { background: #7f8c8d; cursor: default; }
+
+    #reset-btn { background: #c0392b; }
+    #reset-btn:hover:not(:disabled) { background: #a93226; }
+
+    /* ── BOARD ────────────────────────────────────────── */
+    #board-wrap {
+      background: #6c3483;
+      padding: 10px;
+      border: 8px solid #4a235a;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Two halves stacked, each holding 12 points + bar slot */
+    .half {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr) 36px repeat(6, 1fr);
+      gap: 3px;
+      height: 200px;
+    }
+    .half + .half { margin-top: 3px; }
+
+    /* Individual point triangles */
+    .point {
+      background: #5d6d7e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 3px;
+      cursor: pointer;
+      border-radius: 3px;
+      position: relative;
+      overflow: visible;
+    }
+    .point.alt  { background: #2c3e50; }
+    /* Bottom half checkers stack upward */
+    .bottom .point { flex-direction: column-reverse; padding-top: 0; padding-bottom: 3px; }
+    .point.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
+    .point.valid-target { outline: 2px solid #2ecc71; outline-offset: -2px; }
+
+    /* Bar column */
+    .bar-slot {
+      background: #4a235a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .bar-slot.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
+
+    /* Bear-off zones */
+    .bearoff {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a252f;
+      border: 2px dashed #7f8c8d;
+      border-radius: 6px;
+      padding: 4px;
+      margin-top: 4px;
+      gap: 2px;
+      min-width: 44px;
+    }
+    .bearoff-label { font-size: 10px; color: #95a5a6; margin-bottom: 2px; }
+
+    /* Checkers */
+    .checker {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      margin: -3px 0;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .checker.white { background: #ecf0f1; border: 2px solid #bdc3c7; }
+    .checker.red   { background: #e74c3c; border: 2px solid #c0392b; }
+
+    /* Count badge when >5 checkers */
+    .count-badge {
+      position: absolute;
+      bottom: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #f1c40f;
+      pointer-events: none;
+    }
+    .bottom .count-badge { bottom: auto; top: 4px; }
+
+    /* Point labels */
+    .point-label {
+      font-size: 9px;
+      color: #95a5a6;
+      position: absolute;
+      bottom: 2px;
+    }
+    .bottom .point-label { bottom: auto; top: 2px; }
+
+    #status-bar {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #bdc3c7;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    /* Winner overlay */
+    #winner-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    #winner-overlay.show { display: flex; }
+    #winner-box {
+      background: #2c3e50;
+      border: 4px solid #f1c40f;
+      border-radius: 16px;
+      padding: 40px 60px;
+      text-align: center;
+    }
+    #winner-box h1 { margin: 0 0 16px; font-size: 2rem; }
+    #winner-box p  { margin: 0 0 24px; color: #bdc3c7; }
+  </style>
 </head>
 <body>
 
-    <h2>Backgammon Room</h2>
-    <div id="controls">
-        <span id="turn-indicator">Loading game...</span><br>
-        <button id="roll-btn" onclick="rollDice()">Roll Dice</button>
-        <span id="dice-display" style="font-weight:bold; font-size:18px; margin-left:10px;"></span>
-    </div>
+<h2>♟ Couples Backgammon</h2>
 
-    <div id="board">
-        <!-- Top Row (Points 13 to 24 left to right) -->
-        <div class="point" id="p12"></div>
-        <div class="point alt" id="p13"></div>
-        <div class="point" id="p14"></div>
-        <div class="point alt" id="p15"></div>
-        <div class="point" id="p16"></div>
-        <div class="point alt" id="p17"></div>
-        <div class="bar" id="bar"></div>
-        <div class="point" id="p18"></div>
-        <div class="point alt" id="p19"></div>
-        <div class="point" id="p20"></div>
-        <div class="point alt" id="p21"></div>
-        <div class="point" id="p22"></div>
-        <div class="point alt" id="p23"></div>
+<div id="controls">
+  <span id="turn-indicator">Loading…</span>
+  <button id="roll-btn" onclick="rollDice()" disabled>Roll Dice</button>
+  <span id="dice-display"></span>
+  <button id="reset-btn" onclick="resetGame()">New Game</button>
+</div>
 
-        <!-- Bottom Row (Points 12 to 1 right to left) -->
-        <div class="point alt" id="p11"></div>
-        <div class="point" id="p10"></div>
-        <div class="point alt" id="p9"></div>
-        <div class="point" id="p8"></div>
-        <div class="point alt" id="p7"></div>
-        <div class="point" id="p6"></div>
-        <!-- Bar is in the middle grid column 7 -->
-        <div class="point alt" id="p5"></div>
-        <div class="point" id="p4"></div>
-        <div class="point alt" id="p3"></div>
-        <div class="point" id="p2"></div>
-        <div class="point alt" id="p1"></div>
-        <div class="point" id="p0"></div>
-    </div>
+<!--
+  Board layout (point numbers = internal 0-based index):
+  TOP ROW    left→right:  points 12,13,14,15,16,17 | BAR | 18,19,20,21,22,23
+  BOTTOM ROW left→right:  points 11,10, 9, 8, 7, 6 | BAR |  5, 4, 3, 2, 1, 0
+
+  White moves 0→23 (right on bottom, left on top)
+  Red   moves 23→0 (left on top, right on bottom)
+-->
+
+<div id="board-wrap">
+  <!-- TOP HALF: points 12–23 -->
+  <div class="half top" id="top-half">
+    <div class="point"     id="p12" onclick="handlePointClick(12)"><span class="point-label">13</span></div>
+    <div class="point alt" id="p13" onclick="handlePointClick(13)"><span class="point-label">14</span></div>
+    <div class="point"     id="p14" onclick="handlePointClick(14)"><span class="point-label">15</span></div>
+    <div class="point alt" id="p15" onclick="handlePointClick(15)"><span class="point-label">16</span></div>
+    <div class="point"     id="p16" onclick="handlePointClick(16)"><span class="point-label">17</span></div>
+    <div class="point alt" id="p17" onclick="handlePointClick(17)"><span class="point-label">18</span></div>
+    <div class="bar-slot"  id="bar-top"    onclick="handleBarClick()"></div>
+    <div class="point"     id="p18" onclick="handlePointClick(18)"><span class="point-label">19</span></div>
+    <div class="point alt" id="p19" onclick="handlePointClick(19)"><span class="point-label">20</span></div>
+    <div class="point"     id="p20" onclick="handlePointClick(20)"><span class="point-label">21</span></div>
+    <div class="point alt" id="p21" onclick="handlePointClick(21)"><span class="point-label">22</span></div>
+    <div class="point"     id="p22" onclick="handlePointClick(22)"><span class="point-label">23</span></div>
+    <div class="point alt" id="p23" onclick="handlePointClick(23)"><span class="point-label">24</span></div>
+  </div>
+
+  <!-- BOTTOM HALF: points 11–0 -->
+  <div class="half bottom" id="bottom-half">
+    <div class="point alt" id="p11" onclick="handlePointClick(11)"><span class="point-label">12</span></div>
+    <div class="point"     id="p10" onclick="handlePointClick(10)"><span class="point-label">11</span></div>
+    <div class="point alt" id="p9"  onclick="handlePointClick(9)"><span class="point-label">10</span></div>
+    <div class="point"     id="p8"  onclick="handlePointClick(8)"><span class="point-label">9</span></div>
+    <div class="point alt" id="p7"  onclick="handlePointClick(7)"><span class="point-label">8</span></div>
+    <div class="point"     id="p6"  onclick="handlePointClick(6)"><span class="point-label">7</span></div>
+    <div class="bar-slot"  id="bar-bottom" onclick="handleBarClick()"></div>
+    <div class="point alt" id="p5"  onclick="handlePointClick(5)"><span class="point-label">6</span></div>
+    <div class="point"     id="p4"  onclick="handlePointClick(4)"><span class="point-label">5</span></div>
+    <div class="point alt" id="p3"  onclick="handlePointClick(3)"><span class="point-label">4</span></div>
+    <div class="point"     id="p2"  onclick="handlePointClick(2)"><span class="point-label">3</span></div>
+    <div class="point alt" id="p1"  onclick="handlePointClick(1)"><span class="point-label">2</span></div>
+    <div class="point"     id="p0"  onclick="handlePointClick(0)"><span class="point-label">1</span></div>
+  </div>
+</div>
+
+<!-- Bear-off trays -->
+<div style="display:flex;gap:30px;margin-top:8px;">
+  <div class="bearoff" id="bearoff-white">
+    <div class="bearoff-label">WHITE BORNE OFF</div>
+  </div>
+  <div class="bearoff" id="bearoff-red">
+    <div class="bearoff-label">RED BORNE OFF</div>
+  </div>
+</div>
+
+<div id="status-bar"></div>
+
+<!-- Winner overlay -->
+<div id="winner-overlay">
+  <div id="winner-box">
+    <h1 id="winner-text"></h1>
+    <p>All 15 checkers borne off!</p>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
+</div>
 
 <script>
-    // --- SUPABASE CONFIGURATION ---
-    const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co"; 
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ─────────────────────────────────────────────────────────────
+//  SUPABASE CONFIG  –  swap in your own URL/KEY if needed
+// ─────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const GAME_ID = "our-cozy-match"; 
-    let gameState = {};
-    let selectedPointIndex = null;
+const GAME_ID = "our-cozy-match";
 
-    // Standard starting positions
-    const initialBoard = Array(24).fill(null).map(() => ({ count: 0, color: null }));
-    initialBoard[0]  = { count: 2, color: 'white' };
-    initialBoard[11] = { count: 5, color: 'white' };
-    initialBoard[16] = { count: 3, color: 'white' };
-    initialBoard[18] = { count: 5, color: 'white' };
+// ─────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────
+let gameState = null;
+let selectedPointIndex = null; // null = nothing selected; -1 = bar selected
 
-    initialBoard[23] = { count: 2, color: 'red' };
-    initialBoard[12] = { count: 5, color: 'red' };
-    initialBoard[7]  = { count: 3, color: 'red' };
-    initialBoard[5]  = { count: 5, color: 'red' };
+// ─────────────────────────────────────────────────────────────
+//  INITIAL BOARD (standard backgammon setup, 0-based indices)
+//  White moves from 0 → 23 (bears off past 23)
+//  Red   moves from 23 → 0  (bears off past 0 / below 0)
+// ─────────────────────────────────────────────────────────────
+function makeInitialBoard() {
+  const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
+  pts[0]  = { count: 2, color: 'white' };
+  pts[5]  = { count: 5, color: 'red'   };
+  pts[7]  = { count: 3, color: 'red'   };
+  pts[11] = { count: 5, color: 'red'   };
+  pts[12] = { count: 5, color: 'white' };
+  pts[16] = { count: 3, color: 'white' };
+  pts[18] = { count: 5, color: 'white' };
+  pts[23] = { count: 2, color: 'red'   };
+  return pts;
+}
 
-    const initialGame = {
-        id: GAME_ID,
-        board: { points: initialBoard, bar: { red: 0, white: 0 } },
-        turn: 'white',
-        dice: [],
-        moves_left: 0,
-        winner: null
-    };
+function makeInitialState() {
+  return {
+    id: GAME_ID,
+    board: {
+      points: makeInitialBoard(),
+      bar:    { red: 0, white: 0 },
+      borneOff: { red: 0, white: 0 }
+    },
+    turn:       'white',
+    dice:       [],
+    moves_left: 0,
+    winner:     null
+  };
+}
 
-    // Initialize Game
-    async function initGame() {
-        try {
-            let { data, error } = await supabase.from('games').select('*').eq('id', GAME_ID).maybeSingle();
-            
-            if (!data) {
-                console.log("Game room not found. Creating a new one...");
-                const { error: insertError } = await supabase.from('games').insert([initialGame]);
-                if (insertError) throw insertError;
-                gameState = initialGame;
-            } else {
-                gameState = data;
-            }
-            
-            renderBoard();
+// ─────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────
+async function initGame() {
+  setStatus("Connecting…");
+  try {
+    const { data, error } = await supabase
+      .from('games').select('*').eq('id', GAME_ID).maybeSingle();
 
-            // Real-time listener
-            supabase.channel('game-changes')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` }, payload => {
-                console.log("Received real-time update!", payload.new);
-                gameState = payload.new;
-                renderBoard();
-            })
-            .subscribe((status) => {
-                console.log("Supabase Realtime Status:", status);
-            });
+    if (error) throw error;
 
-        } catch (err) {
-            console.error("Database connection failed:", err);
-            document.getElementById('turn-indicator').innerText = "Connection Error. Check Browser Console.";
+    if (!data) {
+      const fresh = makeInitialState();
+      const { error: ie } = await supabase.from('games').insert([fresh]);
+      if (ie) throw ie;
+      gameState = fresh;
+    } else {
+      // Ensure borneOff field exists for older rows
+      if (!data.board.borneOff) data.board.borneOff = { red: 0, white: 0 };
+      gameState = data;
+    }
+
+    renderBoard();
+    subscribeRealtime();
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Connection failed – check console.");
+  }
+}
+
+function subscribeRealtime() {
+  supabase.channel('bg-game')
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` },
+      payload => {
+        const fresh = payload.new;
+        if (!fresh.board.borneOff) fresh.board.borneOff = { red: 0, white: 0 };
+        gameState = fresh;
+        selectedPointIndex = null;
+        renderBoard();
+      })
+    .subscribe(status => console.log("Realtime:", status));
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────────────────────
+function renderBoard() {
+  if (!gameState) return;
+  const { board, turn, dice, winner } = gameState;
+
+  // Turn indicator
+  const ti = document.getElementById('turn-indicator');
+  ti.textContent = winner
+    ? `🏆 ${winner.toUpperCase()} wins!`
+    : `Turn: ${turn.toUpperCase()}`;
+  ti.style.color = winner ? '#f1c40f' : (turn === 'white' ? '#ecf0f1' : '#e74c3c');
+
+  // Dice display
+  document.getElementById('dice-display').textContent =
+    dice.length ? '🎲 ' + dice.join('  ') : '';
+
+  // Roll button: enabled only when it's this client's turn with no dice yet
+  // (In a real game you'd restrict by player identity; here both sides share the screen)
+  document.getElementById('roll-btn').disabled = dice.length > 0 || !!winner;
+
+  // Render all 24 points
+  for (let i = 0; i < 24; i++) {
+    const el  = document.getElementById(`p${i}`);
+    const lbl = el.querySelector('.point-label');
+    // Clear checkers (keep label)
+    Array.from(el.children).forEach(c => { if (!c.classList.contains('point-label')) c.remove(); });
+    el.classList.remove('selected', 'valid-target');
+
+    const pt = board.points[i];
+    const MAX_VISIBLE = 5;
+    const show = Math.min(pt.count, MAX_VISIBLE);
+    for (let c = 0; c < show; c++) {
+      const ch = document.createElement('div');
+      ch.className = `checker ${pt.color}`;
+      el.appendChild(ch);
+    }
+    if (pt.count > MAX_VISIBLE) {
+      const badge = document.createElement('span');
+      badge.className = 'count-badge';
+      badge.textContent = pt.count;
+      el.appendChild(badge);
+    }
+  }
+
+  // Highlight selection & valid targets
+  if (selectedPointIndex !== null && !winner) {
+    if (selectedPointIndex === -1) {
+      document.getElementById('bar-top').classList.add('selected');
+      document.getElementById('bar-bottom').classList.add('selected');
+    } else {
+      document.getElementById(`p${selectedPointIndex}`).classList.add('selected');
+    }
+    // Highlight legal destinations
+    getValidMoves(selectedPointIndex).forEach(dest => {
+      if (dest === 'bearoff') return; // visual handled below
+      document.getElementById(`p${dest}`).classList.add('valid-target');
+    });
+  }
+
+  // Bar
+  const barTop    = document.getElementById('bar-top');
+  const barBottom = document.getElementById('bar-bottom');
+  barTop.innerHTML = barBottom.innerHTML = '';
+  barTop.classList.remove('selected');
+  barBottom.classList.remove('selected');
+  if (selectedPointIndex === -1) {
+    barTop.classList.add('selected');
+    barBottom.classList.add('selected');
+  }
+
+  // White pieces on bar shown in bar-bottom (white's home end)
+  for (let i = 0; i < Math.min(board.bar.white, 4); i++) {
+    const ch = document.createElement('div');
+    ch.className = 'checker white';
+    barBottom.appendChild(ch);
+  }
+  if (board.bar.white > 4) barBottom.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.white}</span>`);
+
+  // Red pieces on bar shown in bar-top (red's home end)
+  for (let i = 0; i < Math.min(board.bar.red, 4); i++) {
+    const ch = document.createElement('div');
+    ch.className = 'checker red';
+    barTop.appendChild(ch);
+  }
+  if (board.bar.red > 4) barTop.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.red}</span>`);
+
+  // Borne-off trays
+  renderBearOff('white', board.borneOff.white);
+  renderBearOff('red',   board.borneOff.red);
+
+  // Winner overlay
+  if (winner) {
+    document.getElementById('winner-text').textContent = `${winner.toUpperCase()} Wins! 🎉`;
+    document.getElementById('winner-overlay').classList.add('show');
+  } else {
+    document.getElementById('winner-overlay').classList.remove('show');
+  }
+
+  // Status hint
+  if (!winner) {
+    if (board.bar[turn] > 0 && dice.length > 0) {
+      setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
+    } else if (dice.length === 0) {
+      setStatus('Roll the dice to take your turn.');
+    } else {
+      setStatus(`${turn.toUpperCase()}: click a checker then a destination.`);
+    }
+  } else {
+    setStatus('');
+  }
+}
+
+function renderBearOff(color, count) {
+  const el = document.getElementById(`bearoff-${color}`);
+  // Keep label
+  const label = el.querySelector('.bearoff-label');
+  el.innerHTML = '';
+  el.appendChild(label);
+  for (let i = 0; i < count; i++) {
+    const ch = document.createElement('div');
+    ch.className = `checker ${color}`;
+    ch.style.margin = '1px 0';
+    el.appendChild(ch);
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  DICE
+// ─────────────────────────────────────────────────────────────
+async function rollDice() {
+  if (!gameState || gameState.dice.length > 0 || gameState.winner) return;
+  const d1 = Math.ceil(Math.random() * 6);
+  const d2 = Math.ceil(Math.random() * 6);
+  const rolled = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
+
+  await pushUpdate({ dice: rolled, moves_left: rolled.length });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CLICK HANDLERS
+// ─────────────────────────────────────────────────────────────
+function handleBarClick() {
+  if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+  const { turn, board } = gameState;
+  if (board.bar[turn] === 0) return; // nothing on bar for this player
+
+  if (selectedPointIndex === -1) {
+    // Deselect
+    selectedPointIndex = null;
+    renderBoard();
+    return;
+  }
+
+  selectedPointIndex = -1; // -1 = bar selected
+  renderBoard();
+}
+
+function handlePointClick(index) {
+  if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+
+  const { turn, board } = gameState;
+
+  // If current player has pieces on bar, they MUST re-enter first
+  if (board.bar[turn] > 0 && selectedPointIndex !== -1) {
+    setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
+    return;
+  }
+
+  const pt = board.points[index];
+
+  // ── NOTHING SELECTED YET ──────────────────────────────────
+  if (selectedPointIndex === null) {
+    if (pt.color === turn && pt.count > 0) {
+      selectedPointIndex = index;
+      renderBoard();
+    }
+    return;
+  }
+
+  // ── SOMETHING ALREADY SELECTED ───────────────────────────
+  const from = selectedPointIndex;
+
+  // Clicking same point → deselect
+  if (from === index) {
+    selectedPointIndex = null;
+    renderBoard();
+    return;
+  }
+
+  // Try the move
+  if (isValidMove(from, index)) {
+    executeMove(from, index);
+  } else {
+    // Re-select if clicking own checker
+    if (pt.color === turn && pt.count > 0) {
+      selectedPointIndex = index;
+      renderBoard();
+    } else {
+      selectedPointIndex = null;
+      renderBoard();
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MOVE VALIDATION
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if moving from `from` to `to` is legal given current dice.
+ * `from` = -1 means moving off the bar.
+ * `to`   = 24 or -1 means bearing off.
+ */
+function isValidMove(from, to) {
+  const { turn, board, dice } = gameState;
+  const dir  = turn === 'white' ? 1 : -1;   // white goes up, red goes down
+  const dist = (to - from) * dir;
+
+  if (dist <= 0) return false;
+  if (!dice.includes(dist)) return false;
+
+  const target = board.points[to];
+  // Target must be empty, own color, or a blot (1 enemy)
+  if (target.color !== null && target.color !== turn && target.count > 1) return false;
+
+  return true;
+}
+
+/**
+ * Computes all valid destination point indices for a piece at `from`.
+ * Returns array of indices (may include 'bearoff' string).
+ */
+function getValidMoves(from) {
+  const { turn, board, dice } = gameState;
+  const dir   = turn === 'white' ? 1 : -1;
+  const dests = [];
+  const uniqueDice = [...new Set(dice)];
+
+  uniqueDice.forEach(d => {
+    const to = from + d * dir;
+
+    // Bearing off
+    if (turn === 'white' && to >= 24) {
+      if (canBearOff('white', board)) dests.push('bearoff');
+      return;
+    }
+    if (turn === 'red' && to < 0) {
+      if (canBearOff('red', board)) dests.push('bearoff');
+      return;
+    }
+
+    if (to < 0 || to > 23) return;
+
+    const target = board.points[to];
+    if (target.color === null || target.color === turn || target.count <= 1) {
+      dests.push(to);
+    }
+  });
+
+  return dests;
+}
+
+/** True if all of `color`'s checkers are in their home board (pts 18-23 for white, 0-5 for red). */
+function canBearOff(color, board) {
+  if (board.bar[color] > 0) return false;
+  const homeStart = color === 'white' ? 18 : 0;
+  const homeEnd   = color === 'white' ? 23 : 5;
+  for (let i = 0; i < 24; i++) {
+    if (board.points[i].color === color && board.points[i].count > 0) {
+      if (i < homeStart || i > homeEnd) return false;
+    }
+  }
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  EXECUTE MOVE
+// ─────────────────────────────────────────────────────────────
+async function executeMove(from, to) {
+  // Deep-clone board to avoid mutating gameState directly before push
+  const board = JSON.parse(JSON.stringify(gameState.board));
+  const { turn } = gameState;
+  let dice = [...gameState.dice];
+
+  const dir  = turn === 'white' ? 1 : -1;
+  const dist = (to - from) * dir;
+
+  // Check if this is a bear-off move (to beyond the board)
+  const bearingOff =
+    (turn === 'white' && (to < 0 || to > 23)) ||
+    (turn === 'red'   && (to < 0 || to > 23));
+
+  // Remove die used
+  const dieIdx = dice.indexOf(dist);
+  if (dieIdx === -1) return; // shouldn't happen
+  dice.splice(dieIdx, 1);
+
+  // Move the piece off `from`
+  board.points[from].count--;
+  if (board.points[from].count === 0) board.points[from].color = null;
+
+  if (bearingOff) {
+    board.borneOff[turn]++;
+  } else {
+    const target = board.points[to];
+    if (target.color !== null && target.color !== turn && target.count === 1) {
+      // Hit a blot – send opponent to bar
+      board.bar[target.color]++;
+      target.count = 0;
+      target.color = null;
+    }
+    target.count++;
+    target.color = turn;
+  }
+
+  // Check for winner (15 checkers borne off)
+  let winner = null;
+  if (board.borneOff[turn] >= 15) winner = turn;
+
+  // Switch turns if no dice left or no legal moves remain
+  let nextTurn = turn;
+  if (!winner) {
+    if (dice.length === 0 || !hasAnyLegalMove(turn, board, dice)) {
+      nextTurn = turn === 'white' ? 'red' : 'white';
+      dice = [];
+    }
+  }
+
+  selectedPointIndex = null;
+
+  await pushUpdate({
+    board,
+    dice,
+    moves_left: dice.length,
+    turn:   nextTurn,
+    winner
+  });
+}
+
+/**
+ * Handle a move that originates from the bar (selectedPointIndex === -1).
+ * `to` is the destination point index.
+ */
+async function executeBarMove(to) {
+  const board = JSON.parse(JSON.stringify(gameState.board));
+  const { turn } = gameState;
+  let dice = [...gameState.dice];
+
+  // White enters on points 0-5 (opponent's home board), red on 18-23
+  const dir  = turn === 'white' ? 1 : -1;
+  // Entry point: white enters from point (die-1), red from point (24-die)
+  const expectedDist = turn === 'white' ? to + 1 : 24 - to;
+
+  if (!dice.includes(expectedDist)) return;
+
+  const target = board.points[to];
+  if (target.color !== null && target.color !== turn && target.count > 1) return;
+
+  // Remove die
+  const dieIdx = dice.indexOf(expectedDist);
+  dice.splice(dieIdx, 1);
+
+  // Place piece
+  board.bar[turn]--;
+  if (target.color !== null && target.color !== turn && target.count === 1) {
+    board.bar[target.color]++;
+    target.count = 0;
+    target.color = null;
+  }
+  target.count++;
+  target.color = turn;
+
+  let nextTurn = turn;
+  if (dice.length === 0 || !hasAnyLegalMove(turn, board, dice)) {
+    nextTurn = turn === 'white' ? 'red' : 'white';
+    dice = [];
+  }
+
+  selectedPointIndex = null;
+
+  await pushUpdate({ board, dice, moves_left: dice.length, turn: nextTurn, winner: null });
+}
+
+/** Quick check: does `color` have at least one legal move given `board` and `dice`? */
+function hasAnyLegalMove(color, board, dice) {
+  const dir = color === 'white' ? 1 : -1;
+
+  // Check bar entries first
+  if (board.bar[color] > 0) {
+    return dice.some(d => {
+      const to = color === 'white' ? d - 1 : 24 - d;
+      if (to < 0 || to > 23) return false;
+      const t = board.points[to];
+      return t.color === null || t.color === color || t.count <= 1;
+    });
+  }
+
+  // Check normal moves
+  for (let i = 0; i < 24; i++) {
+    if (board.points[i].color !== color || board.points[i].count === 0) continue;
+    for (const d of [...new Set(dice)]) {
+      const to = i + d * dir;
+      if (to < 0 || to > 23) {
+        if (canBearOff(color, board)) return true;
+        continue;
+      }
+      const t = board.points[to];
+      if (t.color === null || t.color === color || t.count <= 1) return true;
+    }
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  WIRED POINT CLICK (normal + bar-entry routing)
+// ─────────────────────────────────────────────────────────────
+// Override handlePointClick to also handle bar-to-point moves
+const _origHandlePointClick = handlePointClick;
+// We redefine it below after full definition — use a flag instead.
+
+// Patch handlePointClick to route bar moves
+(function patchHandlePointClick() {
+  const orig = handlePointClick;
+  window.handlePointClick = function(index) {
+    if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+    const { turn, board } = gameState;
+
+    // If bar is selected and player has pieces there, attempt bar entry
+    if (selectedPointIndex === -1) {
+      if (board.bar[turn] > 0) {
+        executeBarMove(index);
+      }
+      return;
+    }
+
+    orig(index);
+  };
+})();
+
+// ─────────────────────────────────────────────────────────────
+//  BEARING OFF via point click
+//  If a checker's only valid moves are off the board, clicking
+//  the checker a second time (or clicking off-board) bears it off.
+//  We handle this by checking if any valid move is 'bearoff'
+//  and wiring a separate click target. For simplicity we re-check
+//  inside handlePointClick: if from is selected and to === from,
+//  check if bearoff is the only option.
+// ─────────────────────────────────────────────────────────────
+// Also wrap bear-off: when clicking selected piece and only bearoff is valid, execute it
+(function patchBearOff() {
+  const orig = window.handlePointClick;
+  window.handlePointClick = function(index) {
+    if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+    const { turn, board, dice } = gameState;
+
+    // If bar selected – handled in previous patch
+    if (selectedPointIndex === -1) { orig(index); return; }
+
+    // If this is the second click on the selected piece, and only move is bearoff → do it
+    if (selectedPointIndex === index) {
+      const moves = getValidMoves(index);
+      const onlyBearoff = moves.length > 0 && moves.every(m => m === 'bearoff');
+      if (onlyBearoff) {
+        const dir  = turn === 'white' ? 1 : -1;
+        const bearDest = turn === 'white' ? 24 : -1;
+        // Find the die that gets us there (or closest if exact not available)
+        const from  = index;
+        const homeStart = turn === 'white' ? 18 : 0;
+        const homeEnd   = turn === 'white' ? 23 : 5;
+        // Find smallest valid die (must be ≥ distance to edge)
+        const distToEdge = turn === 'white' ? (24 - index) : (index + 1);
+        const validDie = dice.find(d => d >= distToEdge);
+        if (validDie) {
+          executeMove(from, from + validDie * dir);
+          return;
         }
+      }
+      // Otherwise just deselect
+      selectedPointIndex = null;
+      renderBoard();
+      return;
     }
 
-    function renderBoard() {
-        document.getElementById('turn-indicator').innerText = `Turn: ${gameState.turn.toUpperCase()}`;
-        document.getElementById('dice-display').innerText = gameState.dice.length ? `🎲 ${gameState.dice.join(', ')}` : 'No dice rolled';
-        document.getElementById('roll-btn').disabled = gameState.dice.length > 0;
+    orig(index);
+  };
+})();
 
-        for (let i = 0; i < 24; i++) {
-            const pointEl = document.getElementById(`p${i}`);
-            pointEl.innerHTML = '';
-            pointEl.onclick = () => handlePointClick(i);
-            
-            const ptData = gameState.board.points[i];
-            for (let c = 0; c < ptData.count; c++) {
-                const checker = document.createElement('div');
-                checker.className = `checker ${ptData.color}`;
-                pointEl.appendChild(checker);
-            }
-        }
+// ─────────────────────────────────────────────────────────────
+//  PUSH UPDATE TO SUPABASE
+// ─────────────────────────────────────────────────────────────
+async function pushUpdate(fields) {
+  try {
+    const { error } = await supabase
+      .from('games').update(fields).eq('id', GAME_ID);
+    if (error) throw error;
+    // Optimistically update local state so the UI feels instant
+    Object.assign(gameState, fields);
+    renderBoard();
+  } catch (err) {
+    console.error("Failed to save move:", err);
+    setStatus("❌ Save failed – check console.");
+  }
+}
 
-        const barEl = document.getElementById('bar');
-        barEl.innerHTML = '';
-        if (gameState.board.bar.white > 0) barEl.innerHTML += `<div class="checker white"></div> x${gameState.board.bar.white}`;
-        if (gameState.board.bar.red > 0) barEl.innerHTML += `<div class="checker red"></div> x${gameState.board.bar.red}`;
-    }
+// ─────────────────────────────────────────────────────────────
+//  RESET
+// ─────────────────────────────────────────────────────────────
+async function resetGame() {
+  selectedPointIndex = null;
+  const fresh = makeInitialState();
+  try {
+    await supabase.from('games').upsert([fresh]);
+    gameState = fresh;
+    renderBoard();
+  } catch (err) {
+    console.error("Reset failed:", err);
+    setStatus("❌ Reset failed – check console.");
+  }
+}
 
-    async function rollDice() {
-        if (gameState.dice.length > 0) return;
-        const d1 = Math.floor(Math.random() * 6) + 1;
-        const d2 = Math.floor(Math.random() * 6) + 1;
-        
-        let rolled = [d1, d2];
-        if (d1 === d2) rolled = [d1, d1, d1, d1]; 
-
-        await supabase.from('games').update({ dice: rolled, moves_left: rolled.length }).eq('id', GAME_ID);
-    }
-
-    async function handlePointClick(index) {
-        if (gameState.dice.length === 0) return;
-
-        if (selectedPointIndex === null) {
-            if (gameState.board.points[index].color === gameState.turn && gameState.board.points[index].count > 0) {
-                selectedPointIndex = index;
-                document.getElementById(`p${index}`).classList.add('selected');
-            }
-        } else {
-            const fromIndex = selectedPointIndex;
-            document.getElementById(`p${fromIndex}`).classList.remove('selected');
-            selectedPointIndex = null;
-
-            if (fromIndex === index) return; 
-
-            const distance = gameState.turn === 'white' ? (index - fromIndex) : (fromIndex - index);
-            
-            if (distance > 0 && gameState.dice.includes(distance)) {
-                let targetPoint = gameState.board.points[index];
-                
-                if (targetPoint.color === null || targetPoint.color === gameState.turn || targetPoint.count === 1) {
-                    
-                    gameState.board.points[fromIndex].count--;
-                    if(gameState.board.points[fromIndex].count === 0) gameState.board.points[fromIndex].color = null;
-
-                    if (targetPoint.color !== gameState.turn && targetPoint.count === 1) {
-                        gameState.board.bar[targetPoint.color]++;
-                        targetPoint.count = 1;
-                        targetPoint.color = gameState.turn;
-                    } else {
-                        targetPoint.count++;
-                        targetPoint.color = gameState.turn;
-                    }
-
-                    const dieIndex = gameState.dice.indexOf(distance);
-                    gameState.dice.splice(dieIndex, 1);
-                    gameState.moves_left--;
-
-                    if (gameState.dice.length === 0 || gameState.moves_left === 0) {
-                        gameState.turn = gameState.turn === 'white' ? 'red' : 'white';
-                        gameState.dice = [];
-                    }
-
-                    await supabase.from('games').update({
-                        board: gameState.board,
-                        dice: gameState.dice,
-                        moves_left: gameState.moves_left,
-                        turn: gameState.turn
-                    }).eq('id', GAME_ID);
-                }
-            }
-        }
-    }
-
-    // Start everything
-    initGame();
+// ─────────────────────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────────────────────
+initGame();
 </script>
 </body>
 </html>
