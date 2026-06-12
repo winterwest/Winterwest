@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Couples Backgammon</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 10px;
+        }
+        h2 { margin: 5px; }
+        #controls { margin-bottom: 15px; text-align: center; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled { background-color: #7f8c8d; }
+        
+        /* The Board */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            grid-template-rows: repeat(2, 200px);
+            gap: 2px;
+            background-color: #8e44ad;
+            padding: 10px;
+            border: 8px solid #5e2780;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .point {
+            background-color: #34495e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            position: relative;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        /* Top row points down, bottom row points up */
+        #board div:nth-child(n+14) {
+            flex-direction: column-reverse;
+        }
+        /* Alternating point colors */
+        .point.alt { background-color: #2c3e50; }
+        .point.selected { border: 2px solid #f1c40f; box-sizing: border-box;}
+        
+        /* The Bar (Middle divider for captured pieces) */
+        .bar {
+            grid-column: 7;
+            grid-row: 1 / span 2;
+            background-color: #5e2780;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* Checkers */
+        .checker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: -4px 0; /* Stack them overlapping slightly */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: inline-block;
+        }
+        .checker.red { background-color: #e74c3c; border: 2px solid #c0392b; }
+        .checker.white { background-color: #ecf0f1; border: 2px solid #bdc3c7; }
+    </style>
+</head>
+<body>
+
+    <h2>Backgammon Room</h2>
+    <div id="controls">
+        <span id="turn-indicator">Loading game...</span><br>
+        <button id="roll-btn" onclick="rollDice()">Roll Dice</button>
+        <span id="dice-display" style="font-weight:bold; font-size:18px; margin-left:10px;"></span>
+    </div>
+
+    <div id="board">
+        <div class="point" id="p12"></div>
+        <div class="point alt" id="p13"></div>
+        <div class="point" id="p14"></div>
+        <div class="point alt" id="p15"></div>
+        <div class="point" id="p16"></div>
+        <div class="point alt" id="p17"></div>
+        <div class="bar" id="bar"></div>
+        <div class="point" id="p18"></div>
+        <div class="point alt" id="p19"></div>
+        <div class="point" id="p20"></div>
+        <div class="point alt" id="p21"></div>
+        <div class="point" id="p22"></div>
+        <div class="point alt" id="p23"></div>
+
+        <div class="point alt" id="p11"></div>
+        <div class="point" id="p10"></div>
+        <div class="point alt" id="p9"></div>
+        <div class="point" id="p8"></div>
+        <div class="point alt" id="p7"></div>
+        <div class="point" id="p6"></div>
+        <div class="point alt" id="p5"></div>
+        <div class="point" id="p4"></div>
+        <div class="point alt" id="p3"></div>
+        <div class="point" id="p2"></div>
+        <div class="point alt" id="p1"></div>
+        <div class="point" id="p0"></div>
+    </div>
+
+<script>
+    // --- SUPABASE CONFIGURATION ---
+    const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co/rest/v1/"; 
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const GAME_ID = "our-cozy-match"; // Fixed room ID for you and your wife
+    let gameState = {};
+    let selectedPointIndex = null;
+
+    // Standard starting positions for Backgammon (0-23 layout)
+    const initialBoard = Array(24).fill(null).map(() => ({ count: 0, color: null }));
+    initialBoard[0]  = { count: 2, color: 'white' };
+    initialBoard[11] = { count: 5, color: 'white' };
+    initialBoard[16] = { count: 3, color: 'white' };
+    initialBoard[18] = { count: 5, color: 'white' };
+
+    initialBoard[23] = { count: 2, color: 'red' };
+    initialBoard[12] = { count: 5, color: 'red' };
+    initialBoard[7]  = { count: 3, color: 'red' };
+    initialBoard[5]  = { count: 5, color: 'red' };
+
+    const initialGame = {
+        id: GAME_ID,
+        board: { points: initialBoard, bar: { red: 0, white: 0 } },
+        turn: 'white',
+        dice: [],
+        moves_left: 0,
+        winner: null
+    };
+
+    // Initialize Game
+    async function initGame() {
+        let { data, error } = await supabase.from('games').select('*').eq('id', GAME_ID).single();
+        if (!data) {
+            // Game doesn't exist yet, create it
+            await supabase.from('games').insert([initialGame]);
+            gameState = initialGame;
+        } else {
+            gameState = data;
+        }
+        renderBoard();
+
+        // Subscribe to real-time changes
+        supabase.channel('custom-all-channel')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` }, payload => {
+            gameState = payload.new;
+            renderBoard();
+        })
+        .subscribe();
+    }
+
+    function renderBoard() {
+        document.getElementById('turn-indicator').innerText = `Turn: ${gameState.turn.toUpperCase()}`;
+        document.getElementById('dice-display').innerText = gameState.dice.length ? `🎲 ${gameState.dice.join(', ')}` : 'No dice rolled';
+        document.getElementById('roll-btn').disabled = gameState.dice.length > 0;
+
+        // Render points
+        for (let i = 0; i < 24; i++) {
+            const pointEl = document.getElementById(`p${i}`);
+            pointEl.innerHTML = '';
+            pointEl.onclick = () => handlePointClick(i);
+            
+            const ptData = gameState.board.points[i];
+            for (let c = 0; c < ptData.count; c++) {
+                const checker = document.createElement('div');
+                checker.className = `checker ${ptData.color}`;
+                pointEl.appendChild(checker);
+            }
+        }
+
+        // Render Bar
+        const barEl = document.getElementById('bar');
+        barEl.innerHTML = '';
+        if (gameState.board.bar.white > 0) barEl.innerHTML += `<div class="checker white"></div> x${gameState.board.bar.white}`;
+        if (gameState.board.bar.red > 0) barEl.innerHTML += `<div class="checker red"></div> x${gameState.board.bar.red}`;
+    }
+
+    async function rollDice() {
+        if (gameState.dice.length > 0) return;
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        
+        let rolled = [d1, d2];
+        if (d1 === d2) rolled = [d1, d1, d1, d1]; // Doubles
+
+        await supabase.from('games').update({ dice: rolled, moves_left: rolled.length }).eq('id', GAME_ID);
+    }
+
+    async function handlePointClick(index) {
+        if (gameState.dice.length === 0) return;
+
+        // Selection phase
+        if (selectedPointIndex === null) {
+            if (gameState.board.points[index].color === gameState.turn && gameState.board.points[index].count > 0) {
+                selectedPointIndex = index;
+                document.getElementById(`p${index}`).classList.add('selected');
+            }
+        } else {
+            // Movement phase
+            const fromIndex = selectedPointIndex;
+            document.getElementById(`p${fromIndex}`).classList.remove('selected');
+            selectedPointIndex = null;
+
+            if (fromIndex === index) return; // Cancel selection
+
+            // Simple movement calculation rule (White moves forward 0->23, Red moves backward 23->0)
+            const distance = gameState.turn === 'white' ? (index - fromIndex) : (fromIndex - index);
+            
+            if (distance > 0 && gameState.dice.includes(distance)) {
+                let targetPoint = gameState.board.points[index];
+                
+                // Can move if point is empty, has own checkers, or has exactly 1 enemy (blot)
+                if (targetPoint.color === null || targetPoint.color === gameState.turn || targetPoint.count === 1) {
+                    
+                    // Modify state locally
+                    gameState.board.points[fromIndex].count--;
+                    if(gameState.board.points[fromIndex].count === 0) gameState.board.points[fromIndex].color = null;
+
+                    if (targetPoint.color !== gameState.turn && targetPoint.count === 1) {
+                        // Hit enemy checker! Send to bar
+                        gameState.board.bar[targetPoint.color]++;
+                        targetPoint.count = 1;
+                        targetPoint.color = gameState.turn;
+                    } else {
+                        targetPoint.count++;
+                        targetPoint.color = gameState.turn;
+                    }
+
+                    // Remove used die
+                    const dieIndex = gameState.dice.indexOf(distance);
+                    gameState.dice.splice(dieIndex, 1);
+                    gameState.moves_left--;
+
+                    // Switch turn if out of moves
+                    if (gameState.dice.length === 0 || gameState.moves_left === 0) {
+                        gameState.turn = gameState.turn === 'white' ? 'red' : 'white';
+                        gameState.dice = [];
+                    }
+
+                    // Sync to Database
+                    await supabase.from('games').update({
+                        board: gameState.board,
+                        dice: gameState.dice,
+                        moves_left: gameState.moves_left,
+                        turn: gameState.turn
+                    }).eq('id', GAME_ID);
+                }
+            }
+        }
+    }
+
+    // Start everything
+    initGame();
+</script>
+</body>
+</html>
