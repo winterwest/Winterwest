@@ -194,20 +194,12 @@
 <h2>♟ G&J Backgammon</h2>
 
 <div id="controls">
-  <span id="turn-indicator">Loading Game</span>
-  <button id="roll-btn" onclick="rollDice()" disabled>Roll Dice</button>
-  <span id="dice-display"></span>
-  <button id="reset-btn" onclick="resetGame()">New Game</button>
-</div>
-
-<!--
-<div id="controls">
   <span id="turn-indicator">Loading Game…</span><br>
   <button id="roll-btn" onclick="rollDice()">Roll Dice</button>
   <button id="skip-btn" onclick="skipTurn()" style="background-color: #c0392b; display: none;">No Legal Moves (Skip)</button>
   <span id="dice-display" style="font-weight:bold; font-size:18px; margin-left:10px;"></span>
 </div>
--->
+
 <!--
   Board layout (point numbers = internal 0-based index):
   TOP ROW    left→right:  points 12,13,14,15,16,17 | BAR | 18,19,20,21,22,23
@@ -374,6 +366,16 @@ function renderBoard() {
   if (!gameState) return;
   const { board, turn, dice, winner } = gameState;
 
+  // Inside function renderBoard() ...
+  document.getElementById('roll-btn').disabled = gameState.dice.length > 0;
+  
+  // ADD THESE LINES TO CONTROL THE SKIP BUTTON:
+  const skipBtn = document.getElementById('skip-btn');
+  if (gameState.dice.length > 0) {
+      skipBtn.style.display = 'inline-block'; // Show it if dice are rolled
+  } else {
+      skipBtn.style.display = 'none'; // Hide it if no dice are on the board
+  }
   // Turn indicator
   const ti = document.getElementById('turn-indicator');
   ti.textContent = winner
@@ -511,6 +513,25 @@ async function rollDice() {
   await pushUpdate({ dice: rolled, moves_left: rolled.length });
 }
 
+async function skipTurn() {
+    // Safety check: Don't do anything if there are no dice rolled
+    if (gameState.dice.length === 0) return;
+
+    // Show a quick browser alert to confirm the turn forfeiture
+    alert(`${gameState.turn.toUpperCase()} has no legal moves and dances! Turn passes.`);
+
+    // Advance the game state to the next player and wipe the dice clean
+    gameState.turn = gameState.turn === 'white' ? 'red' : 'white';
+    gameState.dice = [];
+    gameState.moves_left = 0;
+
+    // Push this update to Supabase so your opponent's device instantly unlocks
+    await supabaseClient.from('games').update({
+        turn: gameState.turn,
+        dice: gameState.dice,
+        moves_left: gameState.moves_left
+    }).eq('id', GAME_ID);
+}  
 // ─────────────────────────────────────────────────────────────
 //  CLICK HANDLERS
 // ─────────────────────────────────────────────────────────────
