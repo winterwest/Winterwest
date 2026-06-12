@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Couples Backgammon</title>
+    <!-- Include Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -97,6 +98,7 @@
     </div>
 
     <div id="board">
+        <!-- Top Row (Points 13 to 24 left to right) -->
         <div class="point" id="p12"></div>
         <div class="point alt" id="p13"></div>
         <div class="point" id="p14"></div>
@@ -111,12 +113,14 @@
         <div class="point" id="p22"></div>
         <div class="point alt" id="p23"></div>
 
+        <!-- Bottom Row (Points 12 to 1 right to left) -->
         <div class="point alt" id="p11"></div>
         <div class="point" id="p10"></div>
         <div class="point alt" id="p9"></div>
         <div class="point" id="p8"></div>
         <div class="point alt" id="p7"></div>
         <div class="point" id="p6"></div>
+        <!-- Bar is in the middle grid column 7 -->
         <div class="point alt" id="p5"></div>
         <div class="point" id="p4"></div>
         <div class="point alt" id="p3"></div>
@@ -127,7 +131,7 @@
 
 <script>
     // --- SUPABASE CONFIGURATION ---
-    const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co/rest/v1/"; 
+    const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co"; 
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
     const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
