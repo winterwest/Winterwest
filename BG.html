@@ -272,7 +272,7 @@
 // ─────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const GAME_ID = "our-cozy-match";
 
@@ -321,14 +321,14 @@ function makeInitialState() {
 async function initGame() {
   setStatus("Connecting…");
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('games').select('*').eq('id', GAME_ID).maybeSingle();
 
     if (error) throw error;
 
     if (!data) {
       const fresh = makeInitialState();
-      const { error: ie } = await supabase.from('games').insert([fresh]);
+      const { error: ie } = await supabaseClient.from('games').insert([fresh]);
       if (ie) throw ie;
       gameState = fresh;
     } else {
@@ -346,7 +346,7 @@ async function initGame() {
 }
 
 function subscribeRealtime() {
-  supabase.channel('bg-game')
+  supabaseClient.channel('bg-game')
     .on('postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` },
       payload => {
@@ -857,7 +857,7 @@ const _origHandlePointClick = handlePointClick;
 // ─────────────────────────────────────────────────────────────
 async function pushUpdate(fields) {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('games').update(fields).eq('id', GAME_ID);
     if (error) throw error;
     // Optimistically update local state so the UI feels instant
@@ -876,7 +876,7 @@ async function resetGame() {
   selectedPointIndex = null;
   const fresh = makeInitialState();
   try {
-    await supabase.from('games').upsert([fresh]);
+    await supabaseClient.from('games').upsert([fresh]);
     gameState = fresh;
     renderBoard();
   } catch (err) {
