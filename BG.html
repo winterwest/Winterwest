@@ -1,3 +1,13 @@
+
+    // --- SUPABASE CONFIGURATION ---
+    const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co/rest/v1/"; 
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const GAME_ID = "our-cozy-match"; // Fixed room ID for you and your wife
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,11 +141,11 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpc3VraG1jZXBlamFvY2JvdHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTY2NzksImV4cCI6MjA5Njc5MjY3OX0.Fn7r-cSkANtDrhK0ehODt4IGWllc7dV3hmiyi_YXVrI";
     const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const GAME_ID = "our-cozy-match"; // Fixed room ID for you and your wife
+    const GAME_ID = "our-cozy-match"; 
     let gameState = {};
     let selectedPointIndex = null;
 
-    // Standard starting positions for Backgammon (0-23 layout)
+    // Standard starting positions
     const initialBoard = Array(24).fill(null).map(() => ({ count: 0, color: null }));
     initialBoard[0]  = { count: 2, color: 'white' };
     initialBoard[11] = { count: 5, color: 'white' };
@@ -158,23 +168,35 @@
 
     // Initialize Game
     async function initGame() {
-        let { data, error } = await supabase.from('games').select('*').eq('id', GAME_ID).single();
-        if (!data) {
-            // Game doesn't exist yet, create it
-            await supabase.from('games').insert([initialGame]);
-            gameState = initialGame;
-        } else {
-            gameState = data;
-        }
-        renderBoard();
-
-        // Subscribe to real-time changes
-        supabase.channel('custom-all-channel')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` }, payload => {
-            gameState = payload.new;
+        try {
+            let { data, error } = await supabase.from('games').select('*').eq('id', GAME_ID).maybeSingle();
+            
+            if (!data) {
+                console.log("Game room not found. Creating a new one...");
+                const { error: insertError } = await supabase.from('games').insert([initialGame]);
+                if (insertError) throw insertError;
+                gameState = initialGame;
+            } else {
+                gameState = data;
+            }
+            
             renderBoard();
-        })
-        .subscribe();
+
+            // Real-time listener
+            supabase.channel('game-changes')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` }, payload => {
+                console.log("Received real-time update!", payload.new);
+                gameState = payload.new;
+                renderBoard();
+            })
+            .subscribe((status) => {
+                console.log("Supabase Realtime Status:", status);
+            });
+
+        } catch (err) {
+            console.error("Database connection failed:", err);
+            document.getElementById('turn-indicator').innerText = "Connection Error. Check Browser Console.";
+        }
     }
 
     function renderBoard() {
@@ -182,7 +204,6 @@
         document.getElementById('dice-display').innerText = gameState.dice.length ? `🎲 ${gameState.dice.join(', ')}` : 'No dice rolled';
         document.getElementById('roll-btn').disabled = gameState.dice.length > 0;
 
-        // Render points
         for (let i = 0; i < 24; i++) {
             const pointEl = document.getElementById(`p${i}`);
             pointEl.innerHTML = '';
@@ -196,7 +217,6 @@
             }
         }
 
-        // Render Bar
         const barEl = document.getElementById('bar');
         barEl.innerHTML = '';
         if (gameState.board.bar.white > 0) barEl.innerHTML += `<div class="checker white"></div> x${gameState.board.bar.white}`;
@@ -209,7 +229,7 @@
         const d2 = Math.floor(Math.random() * 6) + 1;
         
         let rolled = [d1, d2];
-        if (d1 === d2) rolled = [d1, d1, d1, d1]; // Doubles
+        if (d1 === d2) rolled = [d1, d1, d1, d1]; 
 
         await supabase.from('games').update({ dice: rolled, moves_left: rolled.length }).eq('id', GAME_ID);
     }
@@ -217,35 +237,29 @@
     async function handlePointClick(index) {
         if (gameState.dice.length === 0) return;
 
-        // Selection phase
         if (selectedPointIndex === null) {
             if (gameState.board.points[index].color === gameState.turn && gameState.board.points[index].count > 0) {
                 selectedPointIndex = index;
                 document.getElementById(`p${index}`).classList.add('selected');
             }
         } else {
-            // Movement phase
             const fromIndex = selectedPointIndex;
             document.getElementById(`p${fromIndex}`).classList.remove('selected');
             selectedPointIndex = null;
 
-            if (fromIndex === index) return; // Cancel selection
+            if (fromIndex === index) return; 
 
-            // Simple movement calculation rule (White moves forward 0->23, Red moves backward 23->0)
             const distance = gameState.turn === 'white' ? (index - fromIndex) : (fromIndex - index);
             
             if (distance > 0 && gameState.dice.includes(distance)) {
                 let targetPoint = gameState.board.points[index];
                 
-                // Can move if point is empty, has own checkers, or has exactly 1 enemy (blot)
                 if (targetPoint.color === null || targetPoint.color === gameState.turn || targetPoint.count === 1) {
                     
-                    // Modify state locally
                     gameState.board.points[fromIndex].count--;
                     if(gameState.board.points[fromIndex].count === 0) gameState.board.points[fromIndex].color = null;
 
                     if (targetPoint.color !== gameState.turn && targetPoint.count === 1) {
-                        // Hit enemy checker! Send to bar
                         gameState.board.bar[targetPoint.color]++;
                         targetPoint.count = 1;
                         targetPoint.color = gameState.turn;
@@ -254,18 +268,15 @@
                         targetPoint.color = gameState.turn;
                     }
 
-                    // Remove used die
                     const dieIndex = gameState.dice.indexOf(distance);
                     gameState.dice.splice(dieIndex, 1);
                     gameState.moves_left--;
 
-                    // Switch turn if out of moves
                     if (gameState.dice.length === 0 || gameState.moves_left === 0) {
                         gameState.turn = gameState.turn === 'white' ? 'red' : 'white';
                         gameState.dice = [];
                     }
 
-                    // Sync to Database
                     await supabase.from('games').update({
                         board: gameState.board,
                         dice: gameState.dice,
