@@ -48,7 +48,7 @@
       padding: 9px 22px;
       font-size: 15px;
       background: #e67e22;
-      color: blue;
+      color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -136,8 +136,8 @@
       flex-shrink: 0;
       box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     }
-    .checker.blue { background: #ecf0f1; border: 2px solid #bdc3c7; }
-    .checker.white   { background: #e74c3c; border: 2px solid #c0392b; }
+    .checker.white { background: #ecf0f1; border: 2px solid #bdc3c7; }
+    .checker.red   { background: #e74c3c; border: 2px solid #c0392b; }
 
     /* Count badge when >5 checkers */
     .count-badge {
@@ -248,10 +248,10 @@
 
 <!-- Bear-off trays -->
 <div style="display:flex;gap:30px;margin-top:8px;">
-  <div class="bearoff" id="bearoff-blue">
+  <div class="bearoff" id="bearoff-white">
     <div class="bearoff-label">WHITE BORNE OFF</div>
   </div>
-  <div class="bearoff" id="bearoff-white">
+  <div class="bearoff" id="bearoff-red">
     <div class="bearoff-label">RED BORNE OFF</div>
   </div>
 </div>
@@ -290,14 +290,14 @@ let selectedPointIndex = null; // null = nothing selected; -1 = bar selected
 // ─────────────────────────────────────────────────────────────
 function makeInitialBoard() {
   const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
-  pts[0]  = { count: 2, color: 'blue' };
-  pts[5]  = { count: 5, color: 'white'   };
-  pts[7]  = { count: 3, color: 'white'   };
-  pts[11] = { count: 5, color: 'blue' };
-  pts[12] = { count: 5, color: 'white'   };
-  pts[16] = { count: 3, color: 'blue' };
-  pts[18] = { count: 5, color: 'blue' };
-  pts[23] = { count: 2, color: 'white'   };
+  pts[0]  = { count: 2, color: 'white' };
+  pts[5]  = { count: 5, color: 'red'   };
+  pts[7]  = { count: 3, color: 'red'   };
+  pts[11] = { count: 5, color: 'white' };
+  pts[12] = { count: 5, color: 'red'   };
+  pts[16] = { count: 3, color: 'white' };
+  pts[18] = { count: 5, color: 'white' };
+  pts[23] = { count: 2, color: 'red'   };
   return pts;
 }
 
@@ -306,10 +306,10 @@ function makeInitialState() {
     id: GAME_ID,
     board: {
       points: makeInitialBoard(),
-      bar:    { white: 0, blue: 0 },
-      borneOff: { white: 0, blue: 0 }
+      bar:    { red: 0, white: 0 },
+      borneOff: { red: 0, white: 0 }
     },
-    turn:       'blue',
+    turn:       'white',
     dice:       [],
     moves_left: 0,
     winner:     null
@@ -334,7 +334,7 @@ async function initGame() {
       gameState = fresh;
     } else {
       // Ensure borneOff field exists for older rows
-      if (!data.board.borneOff) data.board.borneOff = { white: 0, blue: 0 };
+      if (!data.board.borneOff) data.board.borneOff = { red: 0, white: 0 };
       gameState = data;
     }
 
@@ -352,7 +352,7 @@ function subscribeRealtime() {
       { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME_ID}` },
       payload => {
         const fresh = payload.new;
-        if (!fresh.board.borneOff) fresh.board.borneOff = { white: 0, blue: 0 };
+        if (!fresh.board.borneOff) fresh.board.borneOff = { red: 0, white: 0 };
         gameState = fresh;
         selectedPointIndex = null;
         renderBoard();
@@ -382,7 +382,7 @@ function renderBoard() {
   ti.textContent = winner
     ? `🏆 ${winner.toUpperCase()} wins!`
     : `Turn: ${turn.toUpperCase()}`;
-  ti.style.color = winner ? '#f1c40f' : (turn === 'blue' ? '#ecf0f1' : '#e74c3c');
+  ti.style.color = winner ? '#f1c40f' : (turn === 'white' ? '#ecf0f1' : '#e74c3c');
 
   // Dice display
   document.getElementById('dice-display').textContent =
@@ -442,25 +442,25 @@ function renderBoard() {
     barBottom.classList.add('selected');
   }
 
-  // White pieces on bar shown in bar-bottom (blue's home end)
-  for (let i = 0; i < Math.min(board.bar.blue, 4); i++) {
-    const ch = document.createElement('div');
-    ch.className = 'checker blue';
-    barBottom.appendChild(ch);
-  }
-  if (board.bar.blue > 4) barBottom.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.blue}</span>`);
-
-  // Red pieces on bar shown in bar-top (white's home end)
+  // White pieces on bar shown in bar-bottom (white's home end)
   for (let i = 0; i < Math.min(board.bar.white, 4); i++) {
     const ch = document.createElement('div');
     ch.className = 'checker white';
+    barBottom.appendChild(ch);
+  }
+  if (board.bar.white > 4) barBottom.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.white}</span>`);
+
+  // Red pieces on bar shown in bar-top (red's home end)
+  for (let i = 0; i < Math.min(board.bar.red, 4); i++) {
+    const ch = document.createElement('div');
+    ch.className = 'checker red';
     barTop.appendChild(ch);
   }
-  if (board.bar.white > 4) barTop.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.white}</span>`);
+  if (board.bar.red > 4) barTop.insertAdjacentHTML('beforeend', `<span style="font-size:11px;color:#f1c40f">${board.bar.red}</span>`);
 
   // Borne-off trays
-  renderBearOff('blue', board.borneOff.blue);
-  renderBearOff('white',   board.borneOff.white);
+  renderBearOff('white', board.borneOff.white);
+  renderBearOff('red',   board.borneOff.red);
 
   // Winner overlay
   if (winner) {
@@ -522,7 +522,7 @@ async function skipTurn() {
     alert(`${gameState.turn.toUpperCase()} has no legal moves and dances! Turn passes.`);
 
     // Advance the game state to the next player and wipe the dice clean
-    gameState.turn = gameState.turn === 'blue' ? 'white' : 'blue';
+    gameState.turn = gameState.turn === 'white' ? 'red' : 'white';
     gameState.dice = [];
     gameState.moves_left = 0;
 
@@ -611,7 +611,7 @@ function handlePointClick(index) {
  */
 function isValidMove(from, to) {
   const { turn, board, dice } = gameState;
-  const dir  = turn === 'blue' ? 1 : -1;   // blue goes up, white goes down
+  const dir  = turn === 'white' ? 1 : -1;   // white goes up, red goes down
   const dist = (to - from) * dir;
 
   if (dist <= 0) return false;
@@ -630,7 +630,7 @@ function isValidMove(from, to) {
  */
 function getValidMoves(from) {
   const { turn, board, dice } = gameState;
-  const dir   = turn === 'blue' ? 1 : -1;
+  const dir   = turn === 'white' ? 1 : -1;
   const dests = [];
   const uniqueDice = [...new Set(dice)];
 
@@ -638,12 +638,12 @@ function getValidMoves(from) {
     const to = from + d * dir;
 
     // Bearing off
-    if (turn === 'blue' && to >= 24) {
-      if (canBearOff('blue', board)) dests.push('bearoff');
+    if (turn === 'white' && to >= 24) {
+      if (canBearOff('white', board)) dests.push('bearoff');
       return;
     }
-    if (turn === 'white' && to < 0) {
-      if (canBearOff('white', board)) dests.push('bearoff');
+    if (turn === 'red' && to < 0) {
+      if (canBearOff('red', board)) dests.push('bearoff');
       return;
     }
 
@@ -658,11 +658,11 @@ function getValidMoves(from) {
   return dests;
 }
 
-/** True if all of `color`'s checkers are in their home board (pts 18-23 for blue, 0-5 for white). */
+/** True if all of `color`'s checkers are in their home board (pts 18-23 for white, 0-5 for red). */
 function canBearOff(color, board) {
   if (board.bar[color] > 0) return false;
-  const homeStart = color === 'blue' ? 18 : 0;
-  const homeEnd   = color === 'blue' ? 23 : 5;
+  const homeStart = color === 'white' ? 18 : 0;
+  const homeEnd   = color === 'white' ? 23 : 5;
   for (let i = 0; i < 24; i++) {
     if (board.points[i].color === color && board.points[i].count > 0) {
       if (i < homeStart || i > homeEnd) return false;
@@ -680,13 +680,13 @@ async function executeMove(from, to) {
   const { turn } = gameState;
   let dice = [...gameState.dice];
 
-  const dir  = turn === 'blue' ? 1 : -1;
+  const dir  = turn === 'white' ? 1 : -1;
   const dist = (to - from) * dir;
 
   // Check if this is a bear-off move (to beyond the board)
   const bearingOff =
-    (turn === 'blue' && (to < 0 || to > 23)) ||
-    (turn === 'white'   && (to < 0 || to > 23));
+    (turn === 'white' && (to < 0 || to > 23)) ||
+    (turn === 'red'   && (to < 0 || to > 23));
 
   // Remove die used
   const dieIdx = dice.indexOf(dist);
@@ -719,7 +719,7 @@ async function executeMove(from, to) {
   let nextTurn = turn;
   if (!winner) {
     if (dice.length === 0 || !hasAnyLegalMove(turn, board, dice)) {
-      nextTurn = turn === 'blue' ? 'white' : 'blue';
+      nextTurn = turn === 'white' ? 'red' : 'white';
       dice = [];
     }
   }
@@ -744,10 +744,10 @@ async function executeBarMove(to) {
   const { turn } = gameState;
   let dice = [...gameState.dice];
 
-  // White enters on points 0-5 (opponent's home board), white on 18-23
-  const dir  = turn === 'blue' ? 1 : -1;
-  // Entry point: blue enters from point (die-1), white from point (24-die)
-  const expectedDist = turn === 'blue' ? to + 1 : 24 - to;
+  // White enters on points 0-5 (opponent's home board), red on 18-23
+  const dir  = turn === 'white' ? 1 : -1;
+  // Entry point: white enters from point (die-1), red from point (24-die)
+  const expectedDist = turn === 'white' ? to + 1 : 24 - to;
 
   if (!dice.includes(expectedDist)) return;
 
@@ -770,7 +770,7 @@ async function executeBarMove(to) {
 
   let nextTurn = turn;
   if (dice.length === 0 || !hasAnyLegalMove(turn, board, dice)) {
-    nextTurn = turn === 'blue' ? 'white' : 'blue';
+    nextTurn = turn === 'white' ? 'red' : 'white';
     dice = [];
   }
 
@@ -781,12 +781,12 @@ async function executeBarMove(to) {
 
 /** Quick check: does `color` have at least one legal move given `board` and `dice`? */
 function hasAnyLegalMove(color, board, dice) {
-  const dir = color === 'blue' ? 1 : -1;
+  const dir = color === 'white' ? 1 : -1;
 
   // Check bar entries first
   if (board.bar[color] > 0) {
     return dice.some(d => {
-      const to = color === 'blue' ? d - 1 : 24 - d;
+      const to = color === 'white' ? d - 1 : 24 - d;
       if (to < 0 || to > 23) return false;
       const t = board.points[to];
       return t.color === null || t.color === color || t.count <= 1;
@@ -859,14 +859,14 @@ const _origHandlePointClick = handlePointClick;
       const moves = getValidMoves(index);
       const onlyBearoff = moves.length > 0 && moves.every(m => m === 'bearoff');
       if (onlyBearoff) {
-        const dir  = turn === 'blue' ? 1 : -1;
-        const bearDest = turn === 'blue' ? 24 : -1;
+        const dir  = turn === 'white' ? 1 : -1;
+        const bearDest = turn === 'white' ? 24 : -1;
         // Find the die that gets us there (or closest if exact not available)
         const from  = index;
-        const homeStart = turn === 'blue' ? 18 : 0;
-        const homeEnd   = turn === 'blue' ? 23 : 5;
+        const homeStart = turn === 'white' ? 18 : 0;
+        const homeEnd   = turn === 'white' ? 23 : 5;
         // Find smallest valid die (must be ≥ distance to edge)
-        const distToEdge = turn === 'blue' ? (24 - index) : (index + 1);
+        const distToEdge = turn === 'white' ? (24 - index) : (index + 1);
         const validDie = dice.find(d => d >= distToEdge);
         if (validDie) {
           executeMove(from, from + validDie * dir);
