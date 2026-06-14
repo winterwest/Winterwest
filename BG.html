@@ -324,14 +324,15 @@ let prevDiceLength = 0;
 // ─────────────────────────────────────────────────────────────
 function makeInitialBoard() {
   const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
-  pts[0]  = { count: 2, color: 'white'};
-  pts[5]  = { count: 5, color: 'red'};
-  pts[7]  = { count: 3, color: 'red'};
-  pts[11] = { count: 5, color: 'white'};
-  pts[12] = { count: 5, color: 'red'};
-  pts[16] = { count: 3, color: 'white'};
-  pts[18] = { count: 5, color: 'white'};
-  pts[23] = { count: 2, color: 'red'};
+  // FIXED: red and white swapped to match correct starting positions
+  pts[0]  = { count: 2, color: 'red'};
+  pts[5]  = { count: 5, color: 'white'};
+  pts[7]  = { count: 3, color: 'white'};
+  pts[11] = { count: 5, color: 'red'};
+  pts[12] = { count: 5, color: 'white'};
+  pts[16] = { count: 3, color: 'red'};
+  pts[18] = { count: 5, color: 'red'};
+  pts[23] = { count: 2, color: 'white'};
   return pts;
 }
 
@@ -653,7 +654,7 @@ function handlePointClick(index) {
  */
 function isValidMove(from, to) {
   const { turn, board, dice } = gameState;
-  const dir  = turn === 'white' ? 1 : -1;   // white goes up, red goes down
+  const dir  = turn === 'white' ? -1 : 1;   // white goes down (23→0), red goes up (0→23)
   const dist = (to - from) * dir;
 
   if (dist <= 0) return false;
@@ -672,7 +673,7 @@ function isValidMove(from, to) {
  */
 function getValidMoves(from) {
   const { turn, board, dice } = gameState;
-  const dir   = turn === 'white' ? 1 : -1;
+  const dir   = turn === 'white' ? -1 : 1;
   const dests = [];
   const uniqueDice = [...new Set(dice)];
 
@@ -680,11 +681,11 @@ function getValidMoves(from) {
     const to = from + d * dir;
 
     // Bearing off
-    if (turn === 'white' && to >= 24) {
+    if (turn === 'white' && to < 0) {
       if (canBearOff('white', board)) dests.push('bearoff');
       return;
     }
-    if (turn === 'red' && to < 0) {
+    if (turn === 'red' && to >= 24) {
       if (canBearOff('red', board)) dests.push('bearoff');
       return;
     }
@@ -700,11 +701,11 @@ function getValidMoves(from) {
   return dests;
 }
 
-/** True if all of `color`'s checkers are in their home board (pts 18-23 for white, 0-5 for red). */
+/** True if all of `color`'s checkers are in their home board (pts 0-5 for white, 18-23 for red). */
 function canBearOff(color, board) {
   if (board.bar[color] > 0) return false;
-  const homeStart = color === 'white' ? 18 : 0;
-  const homeEnd   = color === 'white' ? 23 : 5;
+  const homeStart = color === 'white' ? 0 : 18;
+  const homeEnd   = color === 'white' ? 5 : 23;
   for (let i = 0; i < 24; i++) {
     if (board.points[i].color === color && board.points[i].count > 0) {
       if (i < homeStart || i > homeEnd) return false;
@@ -722,13 +723,13 @@ async function executeMove(from, to) {
   const { turn } = gameState;
   let dice = [...gameState.dice];
 
-  const dir  = turn === 'white' ? 1 : -1;
+  const dir  = turn === 'white' ? -1 : 1;
   const dist = (to - from) * dir;
 
   // Check if this is a bear-off move (to beyond the board)
   const bearingOff =
-    (turn === 'white' && (to < 0 || to > 23)) ||
-    (turn === 'red'   && (to < 0 || to > 23));
+    (turn === 'white' && to < 0) ||
+    (turn === 'red'   && to > 23);
 
   // Remove die used
   const dieIdx = dice.indexOf(dist);
@@ -786,10 +787,10 @@ async function executeBarMove(to) {
   const { turn } = gameState;
   let dice = [...gameState.dice];
 
-  // White enters on points 0-5 (opponent's home board), red on 18-23
-  const dir  = turn === 'white' ? 1 : -1;
-  // Entry point: white enters from point (die-1), red from point (24-die)
-  const expectedDist = turn === 'white' ? to + 1 : 24 - to;
+  // White enters on points 18-23 (red's home board), red on 0-5
+  const dir  = turn === 'white' ? -1 : 1;
+  // Entry point: white enters from point (24-die), red from point (die-1)
+  const expectedDist = turn === 'white' ? 24 - to : to + 1;
 
   if (!dice.includes(expectedDist)) return;
 
@@ -823,12 +824,12 @@ async function executeBarMove(to) {
 
 /** Quick check: does `color` have at least one legal move given `board` and `dice`? */
 function hasAnyLegalMove(color, board, dice) {
-  const dir = color === 'white' ? 1 : -1;
+  const dir = color === 'white' ? -1 : 1;
 
   // Check bar entries first
   if (board.bar[color] > 0) {
     return dice.some(d => {
-      const to = color === 'white' ? d - 1 : 24 - d;
+      const to = color === 'white' ? 24 - d : d - 1;
       if (to < 0 || to > 23) return false;
       const t = board.points[to];
       return t.color === null || t.color === color || t.count <= 1;
@@ -901,14 +902,14 @@ const _origHandlePointClick = handlePointClick;
       const moves = getValidMoves(index);
       const onlyBearoff = moves.length > 0 && moves.every(m => m === 'bearoff');
       if (onlyBearoff) {
-        const dir  = turn === 'white' ? 1 : -1;
-        const bearDest = turn === 'white' ? 24 : -1;
+        const dir  = turn === 'white' ? -1 : 1;
+        const bearDest = turn === 'white' ? -1 : 24;
         // Find the die that gets us there (or closest if exact not available)
         const from  = index;
-        const homeStart = turn === 'white' ? 18 : 0;
-        const homeEnd   = turn === 'white' ? 23 : 5;
+        const homeStart = turn === 'white' ? 0 : 18;
+        const homeEnd   = turn === 'white' ? 5 : 23;
         // Find smallest valid die (must be ≥ distance to edge)
-        const distToEdge = turn === 'white' ? (24 - index) : (index + 1);
+        const distToEdge = turn === 'white' ? (index + 1) : (24 - index);
         const validDie = dice.find(d => d >= distToEdge);
         if (validDie) {
           executeMove(from, from + validDie * dir);
