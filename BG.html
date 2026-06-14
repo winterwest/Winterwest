@@ -269,6 +269,38 @@
 
 <script>
 // ─────────────────────────────────────────────────────────────
+//  BEEP  –  plays a short two-tone chime when it's your turn to roll
+// ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTurnBeep() {
+  try {
+    const ctx = getAudioCtx();
+    // Two quick rising tones: 440 Hz then 660 Hz
+    [[440, 0, 0.12], [660, 0.13, 0.12]].forEach(([freq, startOffset, duration]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type      = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + startOffset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime  + startOffset + duration + 0.01);
+    });
+  } catch (e) {
+    console.warn('Audio beep failed:', e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  SUPABASE CONFIG  –  swap in your own URL/KEY if needed
 // ─────────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://wisukhmcepejaocbottu.supabase.co";
@@ -282,6 +314,8 @@ const GAME_ID = "our-cozy-match";
 // ─────────────────────────────────────────────────────────────
 let gameState = null;
 let selectedPointIndex = null; // null = nothing selected; -1 = bar selected
+// Track previous dice state so we can detect the dice→empty transition
+let prevDiceLength = 0;
 
 // ─────────────────────────────────────────────────────────────
 //  INITIAL BOARD (standard backgammon setup, 0-based indices)
@@ -290,14 +324,14 @@ let selectedPointIndex = null; // null = nothing selected; -1 = bar selected
 // ─────────────────────────────────────────────────────────────
 function makeInitialBoard() {
   const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
-  pts[0]  = { count: 2, color: 'red'};
-  pts[5]  = { count: 5, color: 'white'};
-  pts[7]  = { count: 3, color: 'white'};
-  pts[11] = { count: 5, color: 'red'};
-  pts[12] = { count: 5, color: 'white'};
-  pts[16] = { count: 3, color: 'red'};
-  pts[18] = { count: 5, color: 'red'};
-  pts[23] = { count: 2, color: 'white'};
+  pts[0]  = { count: 2, color: 'white'};
+  pts[5]  = { count: 5, color: 'red'};
+  pts[7]  = { count: 3, color: 'red'};
+  pts[11] = { count: 5, color: 'white'};
+  pts[12] = { count: 5, color: 'red'};
+  pts[16] = { count: 3, color: 'white'};
+  pts[18] = { count: 5, color: 'white'};
+  pts[23] = { count: 2, color: 'red'};
   return pts;
 }
 
@@ -338,6 +372,7 @@ async function initGame() {
       gameState = data;
     }
 
+    prevDiceLength = gameState.dice.length;
     renderBoard();
     subscribeRealtime();
   } catch (err) {
@@ -366,6 +401,13 @@ function subscribeRealtime() {
 function renderBoard() {
   if (!gameState) return;
   const { board, turn, dice, winner } = gameState;
+
+  // ── BEEP when dice clear (turn just switched) and game is still on ──
+  const currentDiceLength = dice.length;
+  if (!winner && prevDiceLength > 0 && currentDiceLength === 0) {
+    playTurnBeep();
+  }
+  prevDiceLength = currentDiceLength;
 
   // Inside function renderBoard() ...
   document.getElementById('roll-btn').disabled = gameState.dice.length > 0;
@@ -909,6 +951,7 @@ async function resetGame() {
   try {
     await supabaseClient.from('games').upsert([fresh]);
     gameState = fresh;
+    prevDiceLength = 0;
     renderBoard();
   } catch (err) {
     console.error("Reset failed:", err);
