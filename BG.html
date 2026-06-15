@@ -308,6 +308,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const GAME_ID = "our-cozy-match";
+const bellSound = new Audio("Yahoo - Classic.mp3");
 
 // ─────────────────────────────────────────────────────────────
 //  STATE
@@ -549,6 +550,16 @@ function setStatus(msg) {
 //  DICE
 // ─────────────────────────────────────────────────────────────
 async function rollDice() {
+// Force iOS to unlock the audio track during a real user touch event
+// This empty play/pause sequence primes the audio track on iOS 
+// during a real touch event, unlocking it for network use later!
+  bellSound.play().then(() => {
+    bellSound.pause();
+    bellSound.currentTime = 0;
+  }).catch(e => console.log("Audio unlock skipped"));
+
+// Your regular dice rolling database logic continues below...
+  
   if (!gameState || gameState.dice.length > 0 || gameState.winner) return;
   const d1 = Math.ceil(Math.random() * 6);
   const d2 = Math.ceil(Math.random() * 6);
