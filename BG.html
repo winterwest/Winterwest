@@ -1,199 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>⭐⭐⭐ G&J Backgammon ⭐⭐⭐</title>
-    <!-- Firebase SDK (compat version — no build tools needed) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⭐ G&J Backgammon ⭐</title>
+  <!-- Firebase SDK (compat version — no build tools needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a252f;
-            color: #ecf0f1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0;
-            padding: 16px 8px;
-            min-height: 100vh;
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a252f;
+      color: #ecf0f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 16px 8px;
+      min-height: 100vh;
+    }
 
-        h2 { margin: 0 0 10px; font-size: 1.4rem; letter-spacing: 1px; }
+    h2 { margin: 0 0 10px; font-size: 1.4rem; letter-spacing: 1px; }
 
-        #controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
 
-        #turn-indicator {
-            font-size: 1rem;
-            font-weight: bold;
-            background: #2c3e50;
-            padding: 6px 14px;
-            border-radius: 20px;
-        }
+    #turn-indicator {
+      font-size: 1rem;
+      font-weight: bold;
+      background: #2c3e50;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
 
-        #dice-display { font-size: 1.3rem; min-width: 80px; }
+    #dice-display { font-size: 1.3rem; min-width: 80px; }
 
-        button {
-            padding: 9px 22px;
-            font-size: 15px;
-            background: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover:not(:disabled) { background: #cf6d17; }
-        button:disabled { background: #7f8c8d; cursor: default; }
-        #reset-btn { background: #c0392b; }
-        #reset-btn:hover:not(:disabled) { background: #a93226; }
+    button {
+      padding: 9px 22px;
+      font-size: 15px;
+      background: #e67e22;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) { background: #cf6d17; }
+    button:disabled { background: #7f8c8d; cursor: default; }
+    #reset-btn { background: #c0392b; }
+    #reset-btn:hover:not(:disabled) { background: #a93226; }
 
-        #board-wrap {
-            background: #4df0bc;
-            padding: 10px;
-            border: 8px solid #44d4a6;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 680px;
-        }
+    #board-wrap {
+      background: #4df0bc;
+      padding: 10px;
+      border: 8px solid #44d4a6;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 680px;
+    }
 
-        .half {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr) 36px repeat(6, 1fr);
-            gap: 3px;
-            height: 200px;
-        }
-        .half + .half { margin-top: 3px; }
+    .half {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr) 36px repeat(6, 1fr);
+      gap: 3px;
+      height: 200px;
+    }
+    .half + .half { margin-top: 3px; }
 
-        .point {
-            background: #5d6d7e;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding-top: 3px;
-            cursor: pointer;
-            border-radius: 3px;
-            position: relative;
-            overflow: visible;
-        }
-        .point.alt { background: #2c3e50; }
-        .bottom .point { flex-direction: column-reverse; padding-top: 0; padding-bottom: 3px; }
-        .point.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
-        .point.valid-target { outline: 2px solid #2ecc71; outline-offset: -2px; }
+    .point {
+      background: #5d6d7e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 3px;
+      cursor: pointer;
+      border-radius: 3px;
+      position: relative;
+      overflow: visible;
+    }
+    .point.alt { background: #2c3e50; }
+    .bottom .point { flex-direction: column-reverse; padding-top: 0; padding-bottom: 3px; }
+    .point.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
+    .point.valid-target { outline: 2px solid #2ecc71; outline-offset: -2px; }
 
-        .bar-slot {
-            background: #44d4a6;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        .bar-slot.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
+    .bar-slot {
+      background: #44d4a6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .bar-slot.selected { outline: 3px solid #f1c40f; outline-offset: -2px; }
 
-        .bearoff {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #1a252f;
-            border: 2px dashed #7f8c8d;
-            border-radius: 6px;
-            padding: 4px;
-            margin-top: 4px;
-            gap: 2px;
-            min-width: 44px;
-        }
-        .bearoff-label { font-size: 10px; color: #95a5a6; margin-bottom: 2px; }
+    .bearoff {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a252f;
+      border: 2px dashed #7f8c8d;
+      border-radius: 6px;
+      padding: 4px;
+      margin-top: 4px;
+      gap: 2px;
+      min-width: 44px;
+    }
+    .bearoff-label { font-size: 10px; color: #95a5a6; margin-bottom: 2px; }
 
-        .checker {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            margin: -3px 0;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-        }
-        .checker.white { background: #ecf0f1; border: 2px solid #bdc3c7; }
-        .checker.red   { background: #e74c3c; border: 2px solid #c0392b; }
+    .checker {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      margin: -3px 0;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .checker.white { background: #ecf0f1; border: 2px solid #bdc3c7; }
+    .checker.red   { background: #e74c3c; border: 2px solid #c0392b; }
 
-        .count-badge {
-            position: absolute;
-            bottom: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #f1c40f;
-            pointer-events: none;
-        }
-        .bottom .count-badge { bottom: auto; top: 4px; }
+    .count-badge {
+      position: absolute;
+      bottom: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #f1c40f;
+      pointer-events: none;
+    }
+    .bottom .count-badge { bottom: auto; top: 4px; }
 
-        .point-label {
-            font-size: 9px;
-            color: #95a5a6;
-            position: absolute;
-            bottom: 2px;
-        }
-        .bottom .point-label { bottom: auto; top: 2px; }
+    .point-label {
+      font-size: 9px;
+      color: #95a5a6;
+      position: absolute;
+      bottom: 2px;
+    }
+    .bottom .point-label { bottom: auto; top: 2px; }
 
-        #status-bar {
-            margin-top: 10px;
-            font-size: 0.85rem;
-            color: #bdc3c7;
-            text-align: center;
-            min-height: 20px;
-        }
+    #status-bar {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #bdc3c7;
+      text-align: center;
+      min-height: 20px;
+    }
 
-        #winner-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        #winner-overlay.show { display: flex; }
-        #winner-box {
-            background: #2c3e50;
-            border: 4px solid #f1c40f;
-            border-radius: 16px;
-            padding: 40px 60px;
-            text-align: center;
-        }
-        #winner-box h1 { margin: 0 0 16px; font-size: 2rem; }
-        #winner-box p  { margin: 0 0 24px; color: #bdc3c7; }
+    #winner-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    #winner-overlay.show { display: flex; }
+    #winner-box {
+      background: #2c3e50;
+      border: 4px solid #f1c40f;
+      border-radius: 16px;
+      padding: 40px 60px;
+      text-align: center;
+    }
+    #winner-box h1 { margin: 0 0 16px; font-size: 2rem; }
+    #winner-box p  { margin: 0 0 24px; color: #bdc3c7; }
 
-        #conn-status {
-            font-size: 0.75rem;
-            color: #7f8c8d;
-            margin-bottom: 4px;
-        }
-    </style>
+    #conn-status {
+      font-size: 0.75rem;
+      color: #7f8c8d;
+      margin-bottom: 4px;
+    }
+  </style>
 </head>
 <body>
 
-<h2>⭐⭐⭐ G&amp;J Backgammon ⭐⭐⭐</h2>
+<h2>⭐⭐ G&amp;J Backgammon ⭐⭐</h2>
 <div id="conn-status">Connecting…</div>
 
 <div id="controls">
-    <span id="turn-indicator">Loading Game…</span><br>
-    <button id="roll-btn" onclick="rollDice()" disabled>Roll Dice</button>
-    <button id="skip-btn" onclick="skipTurn()" style="background-color:#c0392b;display:none;">No Legal Moves (Skip)</button>
-    <span id="dice-display" style="font-weight:bold;font-size:18px;margin-left:10px;"></span>
-    <button id="reset-btn" onclick="resetGame()">New Game</button>
+  <span id="turn-indicator">Loading Game…</span><br>
+  <button id="roll-btn" onclick="rollDice()" disabled>Roll Dice</button>
+  <button id="skip-btn" onclick="skipTurn()" style="background-color:#c0392b;display:none;">No Legal Moves (Skip)</button>
+  <span id="dice-display" style="font-weight:bold;font-size:18px;margin-left:10px;"></span>
+  <button id="reset-btn" onclick="resetGame()">New Game</button>
 </div>
 
 <!--
@@ -205,619 +205,623 @@
   White moves 23→0  (bears off past 0)
 -->
 <div id="board-wrap">
-    <div class="half top" id="top-half">
-        <div class="point"     id="p12" onclick="handlePointClick(12)"><span class="point-label">13</span></div>
-        <div class="point alt" id="p13" onclick="handlePointClick(13)"><span class="point-label">14</span></div>
-        <div class="point"     id="p14" onclick="handlePointClick(14)"><span class="point-label">15</span></div>
-        <div class="point alt" id="p15" onclick="handlePointClick(15)"><span class="point-label">16</span></div>
-        <div class="point"     id="p16" onclick="handlePointClick(16)"><span class="point-label">17</span></div>
-        <div class="point alt" id="p17" onclick="handlePointClick(17)"><span class="point-label">18</span></div>
-        <div class="bar-slot"  id="bar-top"    onclick="handleBarClick()"></div>
-        <div class="point"     id="p18" onclick="handlePointClick(18)"><span class="point-label">19</span></div>
-        <div class="point alt" id="p19" onclick="handlePointClick(19)"><span class="point-label">20</span></div>
-        <div class="point"     id="p20" onclick="handlePointClick(20)"><span class="point-label">21</span></div>
-        <div class="point alt" id="p21" onclick="handlePointClick(21)"><span class="point-label">22</span></div>
-        <div class="point"     id="p22" onclick="handlePointClick(22)"><span class="point-label">23</span></div>
-        <div class="point alt" id="p23" onclick="handlePointClick(23)"><span class="point-label">24</span></div>
-    </div>
-    <div class="half bottom" id="bottom-half">
-        <div class="point alt" id="p11" onclick="handlePointClick(11)"><span class="point-label">12</span></div>
-        <div class="point"     id="p10" onclick="handlePointClick(10)"><span class="point-label">11</span></div>
-        <div class="point alt" id="p9"  onclick="handlePointClick(9)"><span class="point-label">10</span></div>
-        <div class="point"     id="p8"  onclick="handlePointClick(8)"><span class="point-label">9</span></div>
-        <div class="point alt" id="p7"  onclick="handlePointClick(7)"><span class="point-label">8</span></div>
-        <div class="point"     id="p6"  onclick="handlePointClick(6)"><span class="point-label">7</span></div>
-        <div class="bar-slot"  id="bar-bottom" onclick="handleBarClick()"></div>
-        <div class="point alt" id="p5"  onclick="handlePointClick(5)"><span class="point-label">6</span></div>
-        <div class="point"     id="p4"  onclick="handlePointClick(4)"><span class="point-label">5</span></div>
-        <div class="point alt" id="p3"  onclick="handlePointClick(3)"><span class="point-label">4</span></div>
-        <div class="point"     id="p2"  onclick="handlePointClick(2)"><span class="point-label">3</span></div>
-        <div class="point alt" id="p1"  onclick="handlePointClick(1)"><span class="point-label">2</span></div>
-        <div class="point"     id="p0"  onclick="handlePointClick(0)"><span class="point-label">1</span></div>
-    </div>
+  <div class="half top" id="top-half">
+    <div class="point"     id="p12" onclick="handlePointClick(12)"><span class="point-label">13</span></div>
+    <div class="point alt" id="p13" onclick="handlePointClick(13)"><span class="point-label">14</span></div>
+    <div class="point"     id="p14" onclick="handlePointClick(14)"><span class="point-label">15</span></div>
+    <div class="point alt" id="p15" onclick="handlePointClick(15)"><span class="point-label">16</span></div>
+    <div class="point"     id="p16" onclick="handlePointClick(16)"><span class="point-label">17</span></div>
+    <div class="point alt" id="p17" onclick="handlePointClick(17)"><span class="point-label">18</span></div>
+    <div class="bar-slot"  id="bar-top"    onclick="handleBarClick()"></div>
+    <div class="point"     id="p18" onclick="handlePointClick(18)"><span class="point-label">19</span></div>
+    <div class="point alt" id="p19" onclick="handlePointClick(19)"><span class="point-label">20</span></div>
+    <div class="point"     id="p20" onclick="handlePointClick(20)"><span class="point-label">21</span></div>
+    <div class="point alt" id="p21" onclick="handlePointClick(21)"><span class="point-label">22</span></div>
+    <div class="point"     id="p22" onclick="handlePointClick(22)"><span class="point-label">23</span></div>
+    <div class="point alt" id="p23" onclick="handlePointClick(23)"><span class="point-label">24</span></div>
+  </div>
+  <div class="half bottom" id="bottom-half">
+    <div class="point alt" id="p11" onclick="handlePointClick(11)"><span class="point-label">12</span></div>
+    <div class="point"     id="p10" onclick="handlePointClick(10)"><span class="point-label">11</span></div>
+    <div class="point alt" id="p9"  onclick="handlePointClick(9)"><span class="point-label">10</span></div>
+    <div class="point"     id="p8"  onclick="handlePointClick(8)"><span class="point-label">9</span></div>
+    <div class="point alt" id="p7"  onclick="handlePointClick(7)"><span class="point-label">8</span></div>
+    <div class="point"     id="p6"  onclick="handlePointClick(6)"><span class="point-label">7</span></div>
+    <div class="bar-slot"  id="bar-bottom" onclick="handleBarClick()"></div>
+    <div class="point alt" id="p5"  onclick="handlePointClick(5)"><span class="point-label">6</span></div>
+    <div class="point"     id="p4"  onclick="handlePointClick(4)"><span class="point-label">5</span></div>
+    <div class="point alt" id="p3"  onclick="handlePointClick(3)"><span class="point-label">4</span></div>
+    <div class="point"     id="p2"  onclick="handlePointClick(2)"><span class="point-label">3</span></div>
+    <div class="point alt" id="p1"  onclick="handlePointClick(1)"><span class="point-label">2</span></div>
+    <div class="point"     id="p0"  onclick="handlePointClick(0)"><span class="point-label">1</span></div>
+  </div>
 </div>
 
 <div style="display:flex;gap:30px;margin-top:8px;">
-    <div class="bearoff" id="bearoff-white"><div class="bearoff-label">WHITE BORNE OFF</div></div>
-    <div class="bearoff" id="bearoff-red"><div class="bearoff-label">RED BORNE OFF</div></div>
+  <div class="bearoff" id="bearoff-white"><div class="bearoff-label">WHITE BORNE OFF</div></div>
+  <div class="bearoff" id="bearoff-red"><div class="bearoff-label">RED BORNE OFF</div></div>
 </div>
 
 <div id="status-bar"></div>
 
 <div id="winner-overlay">
-    <div id="winner-box">
-        <h1 id="winner-text"></h1>
-        <p>All 15 checkers borne off!</p>
-        <button onclick="resetGame()">Play Again</button>
-    </div>
+  <div id="winner-box">
+    <h1 id="winner-text"></h1>
+    <p>All 15 checkers borne off!</p>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
 </div>
 
 <script>
-    // ═══════════════════════════════════════════════════════════════
-    //  🔥 FIREBASE CONFIG
-    //  Replace the 4 values below with your own project's config.
-    //  See SETUP INSTRUCTIONS in the zip's README.txt
-    // ═══════════════════════════════════════════════════════════════
-    const FIREBASE_CONFIG = {
-        apiKey:       "AIzaSyBNDy7sOFHfAh7_HT6zSG4iK_k_ho6EWN4",
-        authDomain:   "backgammon2player.firebaseapp.com",
-        databaseURL:  "https://backgammon2player-default-rtdb.firebaseio.com",
-        projectId:    "backgammon2player",
-    };
+// ═══════════════════════════════════════════════════════════════
+//  🔥 FIREBASE CONFIG
+//  Replace the 4 values below with your own project's config.
+//  See SETUP INSTRUCTIONS in the zip's README.txt
+// ═══════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "PASTE_YOUR_apiKey_HERE",
+  authDomain:        "PASTE_YOUR_authDomain_HERE",
+  databaseURL:       "PASTE_YOUR_databaseURL_HERE",
+  projectId:         "PASTE_YOUR_projectId_HERE",
+};
+const GAME_PATH = "games/our-cozy-match"; // change if you want a different room name
 
-    const GAME_PATH = "games/our-cozy-match"; // change if you want a different room name
+// ═══════════════════════════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════════════════════════
+firebase.initializeApp(FIREBASE_CONFIG);
+const db       = firebase.database();
+const gameRef  = db.ref(GAME_PATH);
 
-    // ═══════════════════════════════════════════════════════════════
-    //  FIREBASE INIT
-    // ═══════════════════════════════════════════════════════════════
-    firebase.initializeApp(FIREBASE_CONFIG);
-    const db       = firebase.database();
-    const gameRef  = db.ref(GAME_PATH);
+// ─────────────────────────────────────────────────────────────
+//  BEEP
+// ─────────────────────────────────────────────────────────────
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playTurnBeep() {
+  try {
+    const ctx = getAudioCtx();
+    [[440, 0, 0.12], [660, 0.13, 0.12]].forEach(([freq, startOffset, duration]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+      gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + startOffset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime  + startOffset + duration + 0.01);
+    });
+  } catch (e) { console.warn('Audio beep failed:', e); }
+}
 
-    // ─────────────────────────────────────────────────────────────
-    //  BEEP
-    // ─────────────────────────────────────────────────────────────
-    let audioCtx = null;
-    function getAudioCtx() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        return audioCtx;
-    }
-    function playTurnBeep() {
-        try {
-            const ctx = getAudioCtx();
-            [[440, 0, 0.12], [660, 0.13, 0.12]].forEach(([freq, startOffset, duration]) => {
-                const osc  = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-                gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
-                gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + startOffset + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
-                osc.start(ctx.currentTime + startOffset);
-                osc.stop(ctx.currentTime  + startOffset + duration + 0.01);
-            });
-        } catch (e) { console.warn('Audio beep failed:', e); }
-    }
+const bellSound = new Audio("Yahoo - Classic.mp3");
 
-    const bellSound = new Audio("Yahoo - Classic.mp3");
+// ─────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────
+let gameState        = null;
+let selectedPointIndex = null; // null = nothing; -1 = bar
+let prevDiceLength   = 0;
 
-    // ─────────────────────────────────────────────────────────────
-    //  STATE
-    // ─────────────────────────────────────────────────────────────
-    let gameState        = null;
-    let selectedPointIndex = null; // null = nothing; -1 = bar
-    let prevDiceLength   = 0;
+// ─────────────────────────────────────────────────────────────
+//  INITIAL BOARD
+//  Red   moves 0→23  (bears off past 23)
+//  White moves 23→0  (bears off past 0)
+// ─────────────────────────────────────────────────────────────
+function makeInitialBoard() {
+  const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
+  pts[0]  = { count: 2, color: 'red'   };
+  pts[5]  = { count: 5, color: 'white' };
+  pts[7]  = { count: 3, color: 'white' };
+  pts[11] = { count: 5, color: 'red'   };
+  pts[12] = { count: 5, color: 'white' };
+  pts[16] = { count: 3, color: 'red'   };
+  pts[18] = { count: 5, color: 'red'   };
+  pts[23] = { count: 2, color: 'white' };
+  return pts;
+}
 
-    // ─────────────────────────────────────────────────────────────
-    //  INITIAL BOARD
-    //  Red   moves 0→23  (bears off past 23)
-    //  White moves 23→0  (bears off past 0)
-    // ─────────────────────────────────────────────────────────────
-    function makeInitialBoard() {
-        const pts = Array.from({ length: 24 }, () => ({ count: 0, color: null }));
-        pts[0]  = { count: 2, color: 'red'   };
-        pts[5]  = { count: 5, color: 'white' };
-        pts[7]  = { count: 3, color: 'white' };
-        pts[11] = { count: 5, color: 'red'   };
-        pts[12] = { count: 5, color: 'white' };
-        pts[16] = { count: 3, color: 'red'   };
-        pts[18] = { count: 5, color: 'red'   };
-        pts[23] = { count: 2, color: 'white' };
-        return pts;
-    }
+function makeInitialState() {
+  return {
+    board: {
+      points:   makeInitialBoard(),
+      bar:      { red: 0, white: 0 },
+      borneOff: { red: 0, white: 0 }
+    },
+    turn:       'white',
+    dice:       [],
+    moves_left: 0,
+    winner:     null
+  };
+}
 
-    function makeInitialState() {
-        return {
-            board: {
-                points:   makeInitialBoard(),
-                bar:      { red: 0, white: 0 },
-                borneOff: { red: 0, white: 0 }
-            },
-            turn:       'white',
-            dice:       [],
-            moves_left: 0,
-            winner:     null
-        };
-    }
+// ─────────────────────────────────────────────────────────────
+//  FIREBASE: INIT & REALTIME LISTENER
+// ─────────────────────────────────────────────────────────────
+async function initGame() {
+  setStatus("Connecting to Firebase…");
+  try {
+    // Check connection state
+    db.ref('.info/connected').on('value', snap => {
+      document.getElementById('conn-status').textContent =
+        snap.val() ? '🟢 Connected' : '🔴 Reconnecting…';
+    });
 
-    // ─────────────────────────────────────────────────────────────
-    //  FIREBASE: INIT & REALTIME LISTENER
-    // ─────────────────────────────────────────────────────────────
-    async function initGame() {
-        setStatus("Connecting to Firebase…");
-        try {
-            // Check connection state
-            db.ref('.info/connected').on('value', snap => {
-                document.getElementById('conn-status').textContent =
-                    snap.val() ? '🟢 Connected' : '🔴 Reconnecting…';
-            });
-
-            const snap = await gameRef.once('value');
-            if (!snap.exists()) {
-                // First run — write initial state
-                await gameRef.set(makeInitialState());
-            }
-
-            // Real-time listener — fires on every change from either player
-            gameRef.on('value', snap => {
-                if (!snap.exists()) return;
-                const fresh = snap.val();
-                // Firebase stores arrays as objects when they have gaps; normalise dice
-                if (fresh.dice && !Array.isArray(fresh.dice)) {
-                    fresh.dice = Object.values(fresh.dice);
-                }
-                if (!fresh.dice) fresh.dice = [];
-                if (!fresh.board.borneOff) fresh.board.borneOff = { red: 0, white: 0 };
-                // Normalise points array
-                if (!Array.isArray(fresh.board.points)) {
-                    fresh.board.points = Object.values(fresh.board.points);
-                }
-
-                gameState = fresh;
-                selectedPointIndex = null;
-                renderBoard();
-            });
-
-        } catch (err) {
-            console.error(err);
-            setStatus("❌ Firebase connection failed – check console & config.");
-        }
+    const snap = await gameRef.once('value');
+    if (!snap.exists()) {
+      // First run — write initial state
+      await gameRef.set(makeInitialState());
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  PUSH UPDATE  (replaces the whole game node atomically)
-    // ─────────────────────────────────────────────────────────────
-    async function pushUpdate(partial) {
-        try {
-            Object.assign(gameState, partial);
-            // Firebase .update() does a shallow merge at the top level
-            await gameRef.update(partial);
-        } catch (err) {
-            console.error("Failed to save move:", err);
-            setStatus("❌ Save failed – check console.");
-        }
+    // Real-time listener — fires on every change from either player
+    gameRef.on('value', snap => {
+      if (!snap.exists()) return;
+      const fresh = snap.val();
+      // Firebase stores arrays as objects when they have gaps; normalise dice
+      if (fresh.dice && !Array.isArray(fresh.dice)) {
+        fresh.dice = Object.values(fresh.dice);
+      }
+      if (!fresh.dice) fresh.dice = [];
+      if (!fresh.board.borneOff) fresh.board.borneOff = { red: 0, white: 0 };
+      // Normalise points array
+      if (!Array.isArray(fresh.board.points)) {
+        fresh.board.points = Object.values(fresh.board.points);
+      }
+
+      gameState = fresh;
+      selectedPointIndex = null;
+      renderBoard();
+    });
+
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Firebase connection failed – check console & config.");
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PUSH UPDATE  (replaces the whole game node atomically)
+// ─────────────────────────────────────────────────────────────
+async function pushUpdate(partial) {
+  try {
+    Object.assign(gameState, partial);
+    // Firebase .update() does a shallow merge at the top level
+    await gameRef.update(partial);
+  } catch (err) {
+    console.error("Failed to save move:", err);
+    setStatus("❌ Save failed – check console.");
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────────────────────
+function renderBoard() {
+  if (!gameState) return;
+  const { board, turn, dice, winner } = gameState;
+
+  // Beep on turn change
+  const currentDiceLength = dice.length;
+  if (!winner && prevDiceLength > 0 && currentDiceLength === 0) playTurnBeep();
+  prevDiceLength = currentDiceLength;
+
+  // Turn indicator
+  const ti = document.getElementById('turn-indicator');
+  ti.textContent = winner
+    ? `🏆 ${winner.toUpperCase()} wins!`
+    : `Turn: ${turn.toUpperCase()}`;
+  ti.style.color = winner ? '#f1c40f' : (turn === 'white' ? '#ecf0f1' : '#e74c3c');
+
+  // Dice
+  document.getElementById('dice-display').textContent =
+    dice.length ? '🎲 ' + dice.join('  ') : '';
+
+  // Buttons
+  document.getElementById('roll-btn').disabled = dice.length > 0 || !!winner;
+  document.getElementById('skip-btn').style.display = dice.length > 0 ? 'inline-block' : 'none';
+
+  // Points
+  for (let i = 0; i < 24; i++) {
+    const el = document.getElementById(`p${i}`);
+    Array.from(el.children).forEach(c => { if (!c.classList.contains('point-label')) c.remove(); });
+    el.classList.remove('selected', 'valid-target');
+
+    const pt = board.points[i];
+    const show = Math.min(pt.count, 5);
+    for (let c = 0; c < show; c++) {
+      const ch = document.createElement('div');
+      ch.className = `checker ${pt.color}`;
+      el.appendChild(ch);
     }
-
-    // ─────────────────────────────────────────────────────────────
-    //  RENDER
-    // ─────────────────────────────────────────────────────────────
-    function renderBoard() {
-        if (!gameState) return;
-        const { board, turn, dice, winner } = gameState;
-
-        // Beep on turn change
-        const currentDiceLength = dice.length;
-        if (!winner && prevDiceLength > 0 && currentDiceLength === 0) playTurnBeep();
-        prevDiceLength = currentDiceLength;
-
-        // Turn indicator
-        const ti = document.getElementById('turn-indicator');
-        ti.textContent = winner
-            ? `🏆 ${winner.toUpperCase()} wins!`
-            : `Turn: ${turn.toUpperCase()}`;
-        ti.style.color = winner ? '#f1c40f' : (turn === 'white' ? '#ecf0f1' : '#e74c3c');
-
-        // Dice
-        document.getElementById('dice-display').textContent =
-            dice.length ? '🎲 ' + dice.join('  ') : '';
-
-        // Buttons
-        document.getElementById('roll-btn').disabled = dice.length > 0 || !!winner;
-        document.getElementById('skip-btn').style.display = dice.length > 0 ? 'inline-block' : 'none';
-
-        // Points
-        for (let i = 0; i < 24; i++) {
-            const el = document.getElementById(`p${i}`);
-            Array.from(el.children).forEach(c => { if (!c.classList.contains('point-label')) c.remove(); });
-            el.classList.remove('selected', 'valid-target');
-
-            const pt = board.points[i];
-            const show = Math.min(pt.count, 5);
-            for (let c = 0; c < show; c++) {
-                const ch = document.createElement('div');
-                ch.className = `checker ${pt.color}`;
-                el.appendChild(ch);
-            }
-            if (pt.count > 5) {
-                const badge = document.createElement('span');
-                badge.className = 'count-badge';
-                badge.textContent = pt.count;
-                el.appendChild(badge);
-            }
-        }
-
-        // Highlights
-        if (selectedPointIndex !== null && !winner) {
-            if (selectedPointIndex === -1) {
-                document.getElementById('bar-top').classList.add('selected');
-                document.getElementById('bar-bottom').classList.add('selected');
-            } else {
-                document.getElementById(`p${selectedPointIndex}`).classList.add('selected');
-            }
-            getValidMoves(selectedPointIndex).forEach(dest => {
-                if (dest === 'bearoff') {
-                    if (selectedPointIndex >= 0)
-                        document.getElementById(`p${selectedPointIndex}`).classList.add('valid-target');
-                } else {
-                    document.getElementById(`p${dest}`).classList.add('valid-target');
-                }
-            });
-        }
-
-        // Bar
-        const barTop    = document.getElementById('bar-top');
-        const barBottom = document.getElementById('bar-bottom');
-        barTop.innerHTML = barBottom.innerHTML = '';
-        barTop.classList.remove('selected');
-        barBottom.classList.remove('selected');
-        if (selectedPointIndex === -1) {
-            barTop.classList.add('selected');
-            barBottom.classList.add('selected');
-        }
-
-        for (let i = 0; i < Math.min(board.bar.white, 4); i++) {
-            const ch = document.createElement('div');
-            ch.className = 'checker white';
-            barTop.appendChild(ch);
-        }
-        if (board.bar.white > 4) barTop.insertAdjacentHTML('beforeend',
-            `<span style="font-size:11px;color:#f1c40f">${board.bar.white}</span>`);
-
-        for (let i = 0; i < Math.min(board.bar.red, 4); i++) {
-            const ch = document.createElement('div');
-            ch.className = 'checker red';
-            barBottom.appendChild(ch);
-        }
-        if (board.bar.red > 4) barBottom.insertAdjacentHTML('beforeend',
-            `<span style="font-size:11px;color:#f1c40f">${board.bar.red}</span>`);
-
-        renderBearOff('white', board.borneOff.white);
-        renderBearOff('red',   board.borneOff.red);
-
-        if (winner) {
-            document.getElementById('winner-text').textContent = `${winner.toUpperCase()} Wins! 🎉`;
-            document.getElementById('winner-overlay').classList.add('show');
-        } else {
-            document.getElementById('winner-overlay').classList.remove('show');
-        }
-
-        if (!winner) {
-            if (board.bar[turn] > 0 && dice.length > 0) {
-                setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
-            } else if (dice.length === 0) {
-                setStatus('Roll the dice to take your turn.');
-            } else {
-                setStatus(`${turn.toUpperCase()}: click a checker, then its destination. Click same checker to bear off.`);
-            }
-        } else {
-            setStatus('');
-        }
+    if (pt.count > 5) {
+      const badge = document.createElement('span');
+      badge.className = 'count-badge';
+      badge.textContent = pt.count;
+      el.appendChild(badge);
     }
+  }
 
-    function renderBearOff(color, count) {
-        const el = document.getElementById(`bearoff-${color}`);
-        const label = el.querySelector('.bearoff-label');
-        el.innerHTML = '';
-        el.appendChild(label);
-        for (let i = 0; i < count; i++) {
-            const ch = document.createElement('div');
-            ch.className = `checker ${color}`;
-            ch.style.margin = '1px 0';
-            el.appendChild(ch);
-        }
+  // Highlights
+  if (selectedPointIndex !== null && !winner) {
+    if (selectedPointIndex === -1) {
+      document.getElementById('bar-top').classList.add('selected');
+      document.getElementById('bar-bottom').classList.add('selected');
+    } else {
+      document.getElementById(`p${selectedPointIndex}`).classList.add('selected');
     }
+    getValidMoves(selectedPointIndex).forEach(dest => {
+      if (dest === 'bearoff') {
+        if (selectedPointIndex >= 0)
+          document.getElementById(`p${selectedPointIndex}`).classList.add('valid-target');
+      } else {
+        document.getElementById(`p${dest}`).classList.add('valid-target');
+      }
+    });
+  }
 
-    function setStatus(msg) {
-        document.getElementById('status-bar').textContent = msg;
+  // Bar
+  const barTop    = document.getElementById('bar-top');
+  const barBottom = document.getElementById('bar-bottom');
+  barTop.innerHTML = barBottom.innerHTML = '';
+  barTop.classList.remove('selected');
+  barBottom.classList.remove('selected');
+  if (selectedPointIndex === -1) {
+    barTop.classList.add('selected');
+    barBottom.classList.add('selected');
+  }
+
+  for (let i = 0; i < Math.min(board.bar.white, 4); i++) {
+    const ch = document.createElement('div');
+    ch.className = 'checker white';
+    barTop.appendChild(ch);
+  }
+  if (board.bar.white > 4) barTop.insertAdjacentHTML('beforeend',
+    `<span style="font-size:11px;color:#f1c40f">${board.bar.white}</span>`);
+
+  for (let i = 0; i < Math.min(board.bar.red, 4); i++) {
+    const ch = document.createElement('div');
+    ch.className = 'checker red';
+    barBottom.appendChild(ch);
+  }
+  if (board.bar.red > 4) barBottom.insertAdjacentHTML('beforeend',
+    `<span style="font-size:11px;color:#f1c40f">${board.bar.red}</span>`);
+
+  renderBearOff('white', board.borneOff.white);
+  renderBearOff('red',   board.borneOff.red);
+
+  if (winner) {
+    document.getElementById('winner-text').textContent = `${winner.toUpperCase()} Wins! 🎉`;
+    document.getElementById('winner-overlay').classList.add('show');
+  } else {
+    document.getElementById('winner-overlay').classList.remove('show');
+  }
+
+  if (!winner) {
+    if (board.bar[turn] > 0 && dice.length > 0) {
+      setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
+    } else if (dice.length === 0) {
+      setStatus('Roll the dice to take your turn.');
+    } else {
+      setStatus(`${turn.toUpperCase()}: click a checker, then its destination. Click same checker to bear off.`);
     }
+  } else {
+    setStatus('');
+  }
+}
 
-    // ─────────────────────────────────────────────────────────────
-    //  DICE
-    // ─────────────────────────────────────────────────────────────
-    async function rollDice() {
-        bellSound.play().then(() => { bellSound.pause(); bellSound.currentTime = 0; }).catch(() => {});
-        if (!gameState || gameState.dice.length > 0 || gameState.winner) return;
-        const d1 = Math.ceil(Math.random() * 6);
-        const d2 = Math.ceil(Math.random() * 6);
-        const rolled = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
-        await pushUpdate({ dice: rolled, moves_left: rolled.length });
+function renderBearOff(color, count) {
+  const el = document.getElementById(`bearoff-${color}`);
+  const label = el.querySelector('.bearoff-label');
+  el.innerHTML = '';
+  el.appendChild(label);
+  for (let i = 0; i < count; i++) {
+    const ch = document.createElement('div');
+    ch.className = `checker ${color}`;
+    ch.style.margin = '1px 0';
+    el.appendChild(ch);
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  DICE
+// ─────────────────────────────────────────────────────────────
+async function rollDice() {
+  bellSound.play().then(() => { bellSound.pause(); bellSound.currentTime = 0; }).catch(() => {});
+  if (!gameState || gameState.dice.length > 0 || gameState.winner) return;
+  const d1 = Math.ceil(Math.random() * 6);
+  const d2 = Math.ceil(Math.random() * 6);
+  const rolled = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
+  await pushUpdate({ dice: rolled, moves_left: rolled.length });
+}
+
+async function skipTurn() {
+  if (!gameState || gameState.dice.length === 0) return;
+  alert(`${gameState.turn.toUpperCase()} has no legal moves and forfeits! Turn passes.`);
+  const nextTurn = gameState.turn === 'white' ? 'red' : 'white';
+  await pushUpdate({ turn: nextTurn, dice: [], moves_left: 0 });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MOVE VALIDATION & BEAR-OFF
+//
+//  Red   dir = +1  (0→23, bears off past 23)
+//  White dir = -1  (23→0, bears off past 0)
+//
+//  Bear-off rules:
+//    1. Exact die: distance to edge.
+//    2. Overshoot: smallest larger die, ONLY from highest occupied point.
+// ─────────────────────────────────────────────────────────────
+
+function canBearOff(color, board) {
+  if (board.bar[color] > 0) return false;
+  const homeStart = color === 'red' ? 18 : 0;
+  const homeEnd   = color === 'red' ? 23 : 5;
+  for (let i = 0; i < 24; i++) {
+    if (board.points[i].color === color && board.points[i].count > 0) {
+      if (i < homeStart || i > homeEnd) return false;
     }
+  }
+  return true;
+}
 
-    async function skipTurn() {
-        if (!gameState || gameState.dice.length === 0) return;
-        alert(`${gameState.turn.toUpperCase()} has no legal moves and forfeits! Turn passes.`);
-        const nextTurn = gameState.turn === 'white' ? 'red' : 'white';
-        await pushUpdate({ turn: nextTurn, dice: [], moves_left: 0 });
+function isHighestOccupied(from, color, board) {
+  // "Highest occupied" = furthest from the bearing-off edge.
+  // Red   bears off past 23: furthest = lowest index in home (18).
+  //   No red checker at any index BELOW `from` inside home (18-23).
+  // White bears off past  0: furthest = highest index in home (5).
+  //   No white checker at any index ABOVE `from` inside home (0-5).
+  if (color === 'red') {
+    for (let i = 18; i < from; i++) {
+      if (board.points[i].color === 'red' && board.points[i].count > 0) return false;
     }
-
-    // ─────────────────────────────────────────────────────────────
-    //  MOVE VALIDATION & BEAR-OFF
-    //
-    //  Red   dir = +1  (0→23, bears off past 23)
-    //  White dir = -1  (23→0, bears off past 0)
-    //
-    //  Bear-off rules:
-    //    1. Exact die: distance to edge.
-    //    2. Overshoot: smallest larger die, ONLY from highest occupied point.
-    // ─────────────────────────────────────────────────────────────
-
-    function canBearOff(color, board) {
-        if (board.bar[color] > 0) return false;
-        const homeStart = color === 'red' ? 18 : 0;
-        const homeEnd   = color === 'red' ? 23 : 5;
-        for (let i = 0; i < 24; i++) {
-            if (board.points[i].color === color && board.points[i].count > 0) {
-                if (i < homeStart || i > homeEnd) return false;
-            }
-        }
-        return true;
+  } else {
+    for (let i = 5; i > from; i--) {
+      if (board.points[i].color === 'white' && board.points[i].count > 0) return false;
     }
+  }
+  return true;
+}
 
-    function isHighestOccupied(from, color, board) {
-        if (color === 'red') {
-            for (let i = from + 1; i <= 23; i++) {
-                if (board.points[i].color === 'red' && board.points[i].count > 0) return false;
-            }
-        } else {
-            for (let i = from - 1; i >= 0; i--) {
-                if (board.points[i].color === 'white' && board.points[i].count > 0) return false;
-            }
-        }
-        return true;
+function bearOffDie(from, color, dice, board) {
+  const distToEdge = color === 'red' ? (24 - from) : (from + 1);
+  if (dice.includes(distToEdge)) return distToEdge;
+  if (isHighestOccupied(from, color, board)) {
+    const overshoots = dice.filter(d => d > distToEdge).sort((a, b) => a - b);
+    if (overshoots.length > 0) return overshoots[0];
+  }
+  return null;
+}
+
+function isValidMove(from, to) {
+  const { turn, board, dice } = gameState;
+  if (to < 0 || to > 23) return false;
+  const dir  = turn === 'red' ? 1 : -1;
+  const dist = (to - from) * dir;
+  if (dist <= 0) return false;
+  if (!dice.includes(dist)) return false;
+  const target = board.points[to];
+  if (target.color !== null && target.color !== turn && target.count > 1) return false;
+  return true;
+}
+
+function getValidMoves(from) {
+  const { turn, board, dice } = gameState;
+  const dir = turn === 'red' ? 1 : -1;
+  const dests = [];
+  const uniqueDice = [...new Set(dice)];
+  uniqueDice.forEach(d => {
+    const to = from + d * dir;
+    if (to < 0 || to > 23) return;
+    const target = board.points[to];
+    if (target.color === null || target.color === turn || target.count <= 1) {
+      if (!dests.includes(to)) dests.push(to);
     }
+  });
+  if (canBearOff(turn, board) && bearOffDie(from, turn, dice, board) !== null) {
+    dests.push('bearoff');
+  }
+  return dests;
+}
 
-    function bearOffDie(from, color, dice, board) {
-        const distToEdge = color === 'red' ? (24 - from) : (from + 1);
-        if (dice.includes(distToEdge)) return distToEdge;
-        if (isHighestOccupied(from, color, board)) {
-            const overshoots = dice.filter(d => d > distToEdge).sort((a, b) => a - b);
-            if (overshoots.length > 0) return overshoots[0];
-        }
-        return null;
+function hasAnyLegalMove(color, board, dice) {
+  const dir = color === 'red' ? 1 : -1;
+  if (board.bar[color] > 0) {
+    return dice.some(d => {
+      const to = color === 'red' ? d - 1 : 24 - d;
+      if (to < 0 || to > 23) return false;
+      const t = board.points[to];
+      return t.color === null || t.color === color || t.count <= 1;
+    });
+  }
+  for (let i = 0; i < 24; i++) {
+    if (board.points[i].color !== color || board.points[i].count === 0) continue;
+    if (canBearOff(color, board) && bearOffDie(i, color, dice, board) !== null) return true;
+    for (const d of [...new Set(dice)]) {
+      const to = i + d * dir;
+      if (to < 0 || to > 23) continue;
+      const t = board.points[to];
+      if (t.color === null || t.color === color || t.count <= 1) return true;
     }
+  }
+  return false;
+}
 
-    function isValidMove(from, to) {
-        const { turn, board, dice } = gameState;
-        if (to < 0 || to > 23) return false;
-        const dir  = turn === 'red' ? 1 : -1;
-        const dist = (to - from) * dir;
-        if (dist <= 0) return false;
-        if (!dice.includes(dist)) return false;
-        const target = board.points[to];
-        if (target.color !== null && target.color !== turn && target.count > 1) return false;
-        return true;
+// ─────────────────────────────────────────────────────────────
+//  EXECUTE MOVES
+// ─────────────────────────────────────────────────────────────
+
+async function executeMove(from, to) {
+  const board = JSON.parse(JSON.stringify(gameState.board));
+  const { turn } = gameState;
+  let dice = [...gameState.dice];
+
+  const dir  = turn === 'red' ? 1 : -1;
+  const dist = (to - from) * dir;
+  const dieIdx = dice.indexOf(dist);
+  if (dieIdx === -1) return;
+  dice.splice(dieIdx, 1);
+
+  board.points[from].count--;
+  if (board.points[from].count === 0) board.points[from].color = null;
+
+  const target = board.points[to];
+  if (target.color !== null && target.color !== turn && target.count === 1) {
+    board.bar[target.color]++;
+    target.count = 0;
+    target.color = null;
+  }
+  target.count++;
+  target.color = turn;
+
+  await finishMove(board, dice, turn);
+}
+
+async function executeBearOff(from) {
+  const { turn } = gameState;
+  const board = JSON.parse(JSON.stringify(gameState.board));
+  let dice = [...gameState.dice];
+
+  const die = bearOffDie(from, turn, dice, board);
+  if (die === null) return;
+
+  dice.splice(dice.indexOf(die), 1);
+  board.points[from].count--;
+  if (board.points[from].count === 0) board.points[from].color = null;
+  board.borneOff[turn]++;
+
+  await finishMove(board, dice, turn);
+}
+
+async function executeBarMove(to) {
+  const board = JSON.parse(JSON.stringify(gameState.board));
+  const { turn } = gameState;
+  let dice = [...gameState.dice];
+
+  const expectedDist = turn === 'red' ? to + 1 : 24 - to;
+  if (!dice.includes(expectedDist)) return;
+
+  const target = board.points[to];
+  if (target.color !== null && target.color !== turn && target.count > 1) return;
+
+  dice.splice(dice.indexOf(expectedDist), 1);
+  board.bar[turn]--;
+
+  if (target.color !== null && target.color !== turn && target.count === 1) {
+    board.bar[target.color]++;
+    target.count = 0;
+    target.color = null;
+  }
+  target.count++;
+  target.color = turn;
+
+  await finishMove(board, dice, turn);
+}
+
+async function finishMove(board, dice, turn) {
+  let winner = null;
+  if (board.borneOff[turn] >= 15) winner = turn;
+
+  let nextTurn = turn;
+  if (!winner && (dice.length === 0 || !hasAnyLegalMove(turn, board, dice))) {
+    nextTurn = turn === 'white' ? 'red' : 'white';
+    dice = [];
+  }
+
+  selectedPointIndex = null;
+  await pushUpdate({ board, dice, moves_left: dice.length, turn: nextTurn, winner });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CLICK HANDLERS
+// ─────────────────────────────────────────────────────────────
+
+function handleBarClick() {
+  if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+  const { turn, board } = gameState;
+  if (board.bar[turn] === 0) return;
+  selectedPointIndex = (selectedPointIndex === -1) ? null : -1;
+  renderBoard();
+}
+
+function handlePointClick(index) {
+  if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
+  const { turn, board } = gameState;
+
+  // Bar selected → attempt bar entry
+  if (selectedPointIndex === -1) {
+    if (board.bar[turn] > 0) executeBarMove(index);
+    return;
+  }
+
+  // Must clear bar before other moves
+  if (board.bar[turn] > 0) {
+    setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
+    return;
+  }
+
+  const pt = board.points[index];
+
+  // Nothing selected → select this piece
+  if (selectedPointIndex === null) {
+    if (pt.color === turn && pt.count > 0) {
+      selectedPointIndex = index;
+      renderBoard();
     }
+    return;
+  }
 
-    function getValidMoves(from) {
-        const { turn, board, dice } = gameState;
-        const dir = turn === 'red' ? 1 : -1;
-        const dests = [];
-        const uniqueDice = [...new Set(dice)];
-        uniqueDice.forEach(d => {
-            const to = from + d * dir;
-            if (to < 0 || to > 23) return;
-            const target = board.points[to];
-            if (target.color === null || target.color === turn || target.count <= 1) {
-                if (!dests.includes(to)) dests.push(to);
-            }
-        });
-        if (canBearOff(turn, board) && bearOffDie(from, turn, dice, board) !== null) {
-            dests.push('bearoff');
-        }
-        return dests;
+  const from = selectedPointIndex;
+
+  // Clicked same piece → bear off if legal, else deselect
+  if (from === index) {
+    const moves = getValidMoves(from);
+    if (moves.includes('bearoff')) {
+      executeBearOff(from);
+    } else {
+      selectedPointIndex = null;
+      renderBoard();
     }
+    return;
+  }
 
-    function hasAnyLegalMove(color, board, dice) {
-        const dir = color === 'red' ? 1 : -1;
-        if (board.bar[color] > 0) {
-            return dice.some(d => {
-                const to = color === 'red' ? d - 1 : 24 - d;
-                if (to < 0 || to > 23) return false;
-                const t = board.points[to];
-                return t.color === null || t.color === color || t.count <= 1;
-            });
-        }
-        for (let i = 0; i < 24; i++) {
-            if (board.points[i].color !== color || board.points[i].count === 0) continue;
-            if (canBearOff(color, board) && bearOffDie(i, color, dice, board) !== null) return true;
-            for (const d of [...new Set(dice)]) {
-                const to = i + d * dir;
-                if (to < 0 || to > 23) continue;
-                const t = board.points[to];
-                if (t.color === null || t.color === color || t.count <= 1) return true;
-            }
-        }
-        return false;
-    }
+  // Normal move
+  if (isValidMove(from, index)) {
+    executeMove(from, index);
+  } else {
+    // Re-select if own checker, else deselect
+    selectedPointIndex = (pt.color === turn && pt.count > 0) ? index : null;
+    renderBoard();
+  }
+}
 
-    // ─────────────────────────────────────────────────────────────
-    //  EXECUTE MOVES
-    // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  RESET
+// ─────────────────────────────────────────────────────────────
+async function resetGame() {
+  selectedPointIndex = null;
+  prevDiceLength = 0;
+  try {
+    await gameRef.set(makeInitialState());
+  } catch (err) {
+    console.error("Reset failed:", err);
+    setStatus("❌ Reset failed – check console.");
+  }
+}
 
-    async function executeMove(from, to) {
-        const board = JSON.parse(JSON.stringify(gameState.board));
-        const { turn } = gameState;
-        let dice = [...gameState.dice];
-
-        const dir  = turn === 'red' ? 1 : -1;
-        const dist = (to - from) * dir;
-        const dieIdx = dice.indexOf(dist);
-        if (dieIdx === -1) return;
-        dice.splice(dieIdx, 1);
-
-        board.points[from].count--;
-        if (board.points[from].count === 0) board.points[from].color = null;
-
-        const target = board.points[to];
-        if (target.color !== null && target.color !== turn && target.count === 1) {
-            board.bar[target.color]++;
-            target.count = 0;
-            target.color = null;
-        }
-        target.count++;
-        target.color = turn;
-
-        await finishMove(board, dice, turn);
-    }
-
-    async function executeBearOff(from) {
-        const { turn } = gameState;
-        const board = JSON.parse(JSON.stringify(gameState.board));
-        let dice = [...gameState.dice];
-
-        const die = bearOffDie(from, turn, dice, board);
-        if (die === null) return;
-
-        dice.splice(dice.indexOf(die), 1);
-        board.points[from].count--;
-        if (board.points[from].count === 0) board.points[from].color = null;
-        board.borneOff[turn]++;
-
-        await finishMove(board, dice, turn);
-    }
-
-    async function executeBarMove(to) {
-        const board = JSON.parse(JSON.stringify(gameState.board));
-        const { turn } = gameState;
-        let dice = [...gameState.dice];
-
-        const expectedDist = turn === 'red' ? to + 1 : 24 - to;
-        if (!dice.includes(expectedDist)) return;
-
-        const target = board.points[to];
-        if (target.color !== null && target.color !== turn && target.count > 1) return;
-
-        dice.splice(dice.indexOf(expectedDist), 1);
-        board.bar[turn]--;
-
-        if (target.color !== null && target.color !== turn && target.count === 1) {
-            board.bar[target.color]++;
-            target.count = 0;
-            target.color = null;
-        }
-        target.count++;
-        target.color = turn;
-
-        await finishMove(board, dice, turn);
-    }
-
-    async function finishMove(board, dice, turn) {
-        let winner = null;
-        if (board.borneOff[turn] >= 15) winner = turn;
-
-        let nextTurn = turn;
-        if (!winner && (dice.length === 0 || !hasAnyLegalMove(turn, board, dice))) {
-            nextTurn = turn === 'white' ? 'red' : 'white';
-            dice = [];
-        }
-
-        selectedPointIndex = null;
-        await pushUpdate({ board, dice, moves_left: dice.length, turn: nextTurn, winner });
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  CLICK HANDLERS
-    // ─────────────────────────────────────────────────────────────
-
-    function handleBarClick() {
-        if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
-        const { turn, board } = gameState;
-        if (board.bar[turn] === 0) return;
-        selectedPointIndex = (selectedPointIndex === -1) ? null : -1;
-        renderBoard();
-    }
-
-    function handlePointClick(index) {
-        if (!gameState || gameState.dice.length === 0 || gameState.winner) return;
-        const { turn, board } = gameState;
-
-        // Bar selected → attempt bar entry
-        if (selectedPointIndex === -1) {
-            if (board.bar[turn] > 0) executeBarMove(index);
-            return;
-        }
-
-        // Must clear bar before other moves
-        if (board.bar[turn] > 0) {
-            setStatus(`${turn.toUpperCase()} must re-enter from the bar first.`);
-            return;
-        }
-
-        const pt = board.points[index];
-
-        // Nothing selected → select this piece
-        if (selectedPointIndex === null) {
-            if (pt.color === turn && pt.count > 0) {
-                selectedPointIndex = index;
-                renderBoard();
-            }
-            return;
-        }
-
-        const from = selectedPointIndex;
-
-        // Clicked same piece → bear off if legal, else deselect
-        if (from === index) {
-            const moves = getValidMoves(from);
-            if (moves.includes('bearoff')) {
-                executeBearOff(from);
-            } else {
-                selectedPointIndex = null;
-                renderBoard();
-            }
-            return;
-        }
-
-        // Normal move
-        if (isValidMove(from, index)) {
-            executeMove(from, index);
-        } else {
-            // Re-select if own checker, else deselect
-            selectedPointIndex = (pt.color === turn && pt.count > 0) ? index : null;
-            renderBoard();
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  RESET
-    // ─────────────────────────────────────────────────────────────
-    async function resetGame() {
-        selectedPointIndex = null;
-        prevDiceLength = 0;
-        try {
-            await gameRef.set(makeInitialState());
-        } catch (err) {
-            console.error("Reset failed:", err);
-            setStatus("❌ Reset failed – check console.");
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  BOOT
-    // ─────────────────────────────────────────────────────────────
-    initGame();
+// ─────────────────────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────────────────────
+initGame();
 </script>
 </body>
 </html>
