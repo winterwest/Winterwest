@@ -550,7 +550,7 @@
         const nextTurn = gameState.turn === 'white' ? 'red' : 'white';
         await pushUpdate({ turn: nextTurn, dice: [], moves_left: 0 });
     }
-
+<!--
     // ─────────────────────────────────────────────────────────────
     //  MOVE VALIDATION & BEAR-OFF
     //
@@ -561,7 +561,7 @@
     //    1. Exact die: distance to edge.
     //    2. Overshoot: smallest larger die, ONLY from highest occupied point.
     // ─────────────────────────────────────────────────────────────
-
+--!>
     function canBearOff(color, board) {
         if (board.bar[color] > 0) return false;
         const homeStart = color === 'red' ? 18 : 0;
@@ -575,11 +575,13 @@
     }
 
     function isHighestOccupied(from, color, board) {
+    <!--
         // "Highest occupied" = furthest from the bearing-off edge.
         // Red   bears off past 23: furthest = lowest index in home (18).
         //   No red checker at any index BELOW `from` inside home (18-23).
         // White bears off past  0: furthest = highest index in home (5).
         //   No white checker at any index ABOVE `from` inside home (0-5).
+    --!>
         if (color === 'red') {
             for (let i = 18; i < from; i++) {
                 if (board.points[i].color === 'red' && board.points[i].count > 0) return false;
