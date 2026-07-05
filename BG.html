@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>⭐⭐⭐⭐ G&J Backgammon ⭐⭐⭐⭐</title>
+  <title>⭐ G&J Backgammon ⭐</title>
   <!-- Firebase SDK (compat version — no build tools needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -185,7 +185,7 @@
 </head>
 <body>
 
-<h2>⭐⭐⭐⭐ G&amp;J Backgammon ⭐⭐⭐⭐</h2>
+<h2>⭐⭐ G&amp;J Backgammon ⭐⭐</h2>
 <div id="conn-status">Connecting…</div>
 
 <div id="controls">
@@ -259,21 +259,11 @@
 //  See SETUP INSTRUCTIONS in the zip's README.txt
 // ═══════════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:       "AIzaSyBNDy7sOFHfAh7_HT6zSG4iK_k_ho6EWN4",
-  authDomain:   "backgammon2player.firebaseapp.com",
-  databaseURL:  "https://backgammon2player-default-rtdb.firebaseio.com",
-  projectId:    "backgammon2player",
+  apiKey:            "PASTE_YOUR_apiKey_HERE",
+  authDomain:        "PASTE_YOUR_authDomain_HERE",
+  databaseURL:       "PASTE_YOUR_databaseURL_HERE",
+  projectId:         "PASTE_YOUR_projectId_HERE",
 };
-// const firebaseConfig = {
-//   apiKey: "AIzaSyBNDy7sOFHfAh7_HT6zSG4iK_k_ho6EWN4",
-//   authDomain: "backgammon2player.firebaseapp.com",
-//   databaseURL: "https://backgammon2player-default-rtdb.firebaseio.com",
-//   projectId: "backgammon2player",
-//   storageBucket: "backgammon2player.firebasestorage.app",
-//   messagingSenderId: "843840173658",
-//   appId: "1:843840173658:web:e5ea7ba6ae6c8e5a5eca63"
-// };
-
 const GAME_PATH = "games/our-cozy-match"; // change if you want a different room name
 
 // ═══════════════════════════════════════════════════════════════
@@ -585,12 +575,17 @@ function canBearOff(color, board) {
 }
 
 function isHighestOccupied(from, color, board) {
+  // "Highest occupied" = furthest from the bearing-off edge.
+  // Red   bears off past 23: furthest = lowest index in home (18).
+  //   No red checker at any index BELOW `from` inside home (18-23).
+  // White bears off past  0: furthest = highest index in home (5).
+  //   No white checker at any index ABOVE `from` inside home (0-5).
   if (color === 'red') {
-    for (let i = from + 1; i <= 23; i++) {
+    for (let i = 18; i < from; i++) {
       if (board.points[i].color === 'red' && board.points[i].count > 0) return false;
     }
   } else {
-    for (let i = from - 1; i >= 0; i--) {
+    for (let i = 5; i > from; i--) {
       if (board.points[i].color === 'white' && board.points[i].count > 0) return false;
     }
   }
