@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life's Timeline</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); padding: 2rem; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { color: var(--primary); font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { color: var(--text-light); }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        .card h2 { margin-bottom: 1rem; font-size: 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .form-row input { flex: 1; }
+        
+        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text-light); }
+        input[type="text"], input[type="date"] { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; }
+        
+        .section-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin: 1rem 0 0.5rem 0; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-sec { background: #e2e8f0; color: var(--text); margin-top: 0.5rem; }
+        .btn-sec:hover { background: #cbd5e1; }
+        
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #e0e7ff; color: var(--primary); border-radius: 4px; width: auto; font-weight: bold; border: none; cursor: pointer; }
+        .btn-sm:hover { background: #c7d2fe; }
+
+        .results-section { margin-top: 2rem; display: none; }
+        h3 { margin: 2rem 0 1rem 0; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+
+        /* Stats List */
+        .stats-list { list-style: none; }
+        .stats-list li { background: white; padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+        /* Matrix Table */
+        .table-wrapper { overflow-x: auto; background: white; border-radius: 8px; border: 1px solid var(--border); margin-top: 1rem; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; white-space: nowrap; }
+        th, td { padding: 0.75rem; border: 1px solid var(--border); }
+        th { background: #f1f5f9; font-weight: 600; position: sticky; top: 0; }
+        tr:hover { background: #f8fafc; }
+
+        /* Gantt Chart */
+        .gantt-container { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-top: 1rem; position: relative; }
+        .gantt-row { display: flex; align-items: center; margin-bottom: 1rem; height: 40px; position: relative; }
+        .gantt-label { width: 140px; font-weight: 600; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gantt-timeline-wrapper { flex-grow: 1; height: 100%; background: #f1f5f9; border-radius: 6px; position: relative; overflow: hidden; }
+        .gantt-bar { position: absolute; height: 100%; background: linear-gradient(90deg, #818cf8, #4f46e5); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: bold; min-width: 2px; }
+        .gantt-milestone { position: absolute; width: 12px; height: 12px; background: #ef4444; transform: rotate(45deg) translateY(-50%); top: 50%; border: 2px solid white; cursor: pointer; z-index: 2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Life's Timeline</h1>
+        <p>Cross-reference custom milestones, calculate alignments, and explore overlapping journeys.</p>
+    </header>
+
+    <div id="people-container" class="grid">
+        <div class="card person-card" data-index="0">
+            <h2>Person 1</h2>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" class="p-name" value="Person 1">
+            </div>
+            <div class="form-group">
+                <label>Date of Birth (DOB)</label>
+                <input type="date" class="p-dob" value="1960-05-15">
+            </div>
+            <div class="form-group">
+                <label>Date of Death (DOD) <small>(Leave blank if alive)</small></label>
+                <input type="date" class="p-dod">
+            </div>
+            <div class="form-group">
+                <label>Wedding Date</label>
+                <input type="date" class="p-wedding" value="1985-06-20">
+            </div>
+
+            <div class="section-title">
+                <span>Children</span>
+                <button class="btn-sm" onclick="addChildRow(this)">+ Add Child</button>
+            </div>
+            <div class="children-container">
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 1 Name" class="c-name" value="Child 1">
+                    <input type="date" class="c-dob" value="1988-10-12">
+                </div>
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 2 Name" class="c-name" value="Child 2">
+                    <input type="date" class="c-dob" value="1992-04-05">
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>Custom Events (Max 5)</span>
+                <button class="btn-sm" onclick="addCustomEventRow(this)">+ Add Custom Event</button>
+            </div>
+            <div class="events-container"></div>
+        </div>
+
+        <div class="card person-card" data-index="1">
+            <h2>Person 2</h2>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" class="p-name" value="Person 2">
+            </div>
+            <div class="form-group">
+                <label>Date of Birth (DOB)</label>
+                <input type="date" class="p-dob" value="1988-10-12">
+            </div>
+            <div class="form-group">
+                <label>Date of Death (DOD)</label>
+                <input type="date" class="p-dod">
+            </div>
+            <div class="form-group">
+                <label>Wedding Date</label>
+                <input type="date" class="p-wedding" value="2013-11-16">
+            </div>
+
+            <div class="section-title">
+                <span>Children</span>
+                <button class="btn-sm" onclick="addChildRow(this)">+ Add Child</button>
+            </div>
+            <div class="children-container">
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 1 Name" class="c-name" value="Child 1">
+                    <input type="date" class="c-dob" value="2016-08-22">
+                </div>
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 2 Name" class="c-name" value="Child 2">
+                    <input type="date" class="c-dob" value="2018-05-14">
+                </div>
+            </div>
+
+            <div class="section-title">
+                <span>Custom Events (Max 5)</span>
+                <button class="btn-sm" onclick="addCustomEventRow(this)">+ Add Custom Event</button>
+            </div>
+            <div class="events-container"></div>
+        </div>
+    </div>
+
+    <div style="max-width: 400px; margin: 0 auto 2rem auto;">
+        <button class="btn" onclick="calculateTimeline()">Generate Analytics & Timeline</button>
+        <button class="btn btn-sec" onclick="addPersonCard()">+ Add Another Person</button>
+    </div>
+
+    <div id="results" class="results-section">
+        <h3>Gantt Overlap Timeline</h3>
+        <div id="gantt-chart" class="gantt-container"></div>
+
+        <h3>Worded Insights & Stats</h3>
+        <ul id="insights-list" class="stats-list"></ul>
+
+        <h3>Cross-Reference Day Matrix</h3>
+        <p style="font-size: 0.875rem; color: var(--text-light); margin-bottom: 0.5rem;">
+            Shows the absolute difference in days between milestones across individuals.
+        </p>
+        <div id="matrix-table" class="table-wrapper"></div>
+    </div>
+</div>
+
+<script>
+    let personCount = 2;
+
+    function addChildRow(button) {
+        const container = button.closest('.card').querySelector('.children-container');
+        const count = container.children.length + 1;
+        const div = document.createElement('div');
+        div.className = 'form-row child-row';
+        div.innerHTML = `
+            <input type="text" placeholder="Child ${count} Name" class="c-name">
+            <input type="date" class="c-dob">
+        `;
+        container.appendChild(div);
+    }
+
+    function addCustomEventRow(button) {
+        const container = button.closest('.card').querySelector('.events-container');
+        if (container.children.length >= 5) {
+            alert("Maximum of 5 custom events allowed per person.");
+            return;
+        }
+        const div = document.createElement('div');
+        div.className = 'form-row event-row';
+        div.innerHTML = `
+            <input type="text" placeholder="e.g., Learned to drive" class="e-name">
+            <input type="date" class="e-date">
+        `;
+        container.appendChild(div);
+    }
+
+    function addPersonCard() {
+        personCount++;
+        const container = document.getElementById('people-container');
+        const div = document.createElement('div');
+        div.className = 'card person-card';
+        div.setAttribute('data-index', personCount - 1);
+        div.innerHTML = `
+            <h2>Person ${personCount}</h2>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" class="p-name" value="Person ${personCount}">
+            </div>
+            <div class="form-group">
+                <label>Date of Birth (DOB)</label>
+                <input type="date" class="p-dob">
+            </div>
+            <div class="form-group">
+                <label>Date of Death (DOD)</label>
+                <input type="date" class="p-dod">
+            </div>
+            <div class="form-group">
+                <label>Wedding Date</label>
+                <input type="date" class="p-wedding">
+            </div>
+            <div class="section-title">
+                <span>Children</span>
+                <button class="btn-sm" onclick="addChildRow(this)">+ Add Child</button>
+            </div>
+            <div class="children-container">
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 1 Name" class="c-name">
+                    <input type="date" class="c-dob">
+                </div>
+                <div class="form-row child-row">
+                    <input type="text" placeholder="Child 2 Name" class="c-name">
+                    <input type="date" class="c-dob">
+                </div>
+            </div>
+            <div class="section-title">
+                <span>Custom Events (Max 5)</span>
+                <button class="btn-sm" onclick="addCustomEventRow(this)">+ Add Custom Event</button>
+            </div>
+            <div class="events-container"></div>
+        `;
+        container.appendChild(div);
+    }
+
+    function getDaysBetween(date1, date2) {
+        return Math.round((new Date(date2) - new Date(date1)) / (1000 * 60 * 60 * 24));
+    }
+
+    function calculateTimeline() {
+        const cards = document.querySelectorAll('.person-card');
+        const people = [];
+        let globalMinDate = Infinity;
+        let globalMaxDate = -Infinity;
+        const today = new Date();
+
+        // 1. Gather Data Dynamically
+        cards.forEach(card => {
+            const name = card.querySelector('.p-name').value || "Unnamed";
+            const dob = card.querySelector('.p-dob').value;
+            const dod = card.querySelector('.p-dod').value;
+            const wedding = card.querySelector('.p-wedding').value;
+
+            if (!dob) return; // Skip if no DOB provided
+
+            const milestones = { "DOB": dob };
+            if (dod) milestones["DOD"] = dod;
+            if (wedding) milestones["Wedding"] = wedding;
+
+            // Gather Children
+            const childRows = card.querySelectorAll('.child-row');
+            const childrenTrack = [];
+            childRows.forEach((row, idx) => {
+                const cName = row.querySelector('.c-name').value || `Child ${idx + 1}`;
+                const cDob = row.querySelector('.c-dob').value;
+                if (cDob) {
+                    milestones[`Child: ${cName}`] = cDob;
+                    childrenTrack.push({ name: cName, dob: cDob });
+                }
+            });
+
+            // Gather Custom Events
+            const eventRows = card.querySelectorAll('.event-row');
+            eventRows.forEach(row => {
+                const eName = row.querySelector('.e-name').value || "Custom Event";
+                const eDate = row.querySelector('.e-date').value;
+                if (eDate) {
+                    milestones[`Event: ${eName}`] = eDate;
+                }
+            });
+
+            // Track timeline boundaries
+            Object.values(milestones).forEach(d => {
+                const ms = new Date(d).getTime();
+                if (ms < globalMinDate) globalMinDate = ms;
+                if (ms > globalMaxDate) globalMaxDate = ms;
+            });
+
+            if (!dod && today.getTime() > globalMaxDate) {
+                globalMaxDate = today.getTime();
+            }
+
+            people.push({ name, dob, dod, wedding, children: childrenTrack, milestones });
+        });
+
+        if (people.length < 2) {
+            alert("Please fill out at least DOB for 2 people.");
+            return;
+        }
+
+        document.getElementById('results').style.display = 'block';
+
+        // 2. Generate Worded Insights
+        const insights = [];
+        
+        people.forEach(p => {
+            const endLife = p.dod ? new Date(p.dod) : today;
+            const livedDays = getDaysBetween(p.dob, endLife);
+            insights.push(`<strong>${p.name}</strong> has lived for <strong>${livedDays.toLocaleString()}</strong> days ${p.dod ? 'total' : 'to date'}.`);
+
+            if (p.wedding && p.dod) {
+                const marriedDays = getDaysBetween(p.wedding, p.dod);
+                const postMarriage = getDaysBetween(p.dod, today);
+                if (postMarriage > marriedDays) {
+                    insights.push(`${p.name} has been widowed (${postMarriage.toLocaleString()} days) longer than they were married (${marriedDays.toLocaleString()} days).`);
+                }
+            }
+
+            // Check dynamic child spacing rules
+            if (p.children.length >= 2) {
+                for(let i=0; i < p.children.length - 1; i++) {
+                    const gap = Math.abs(getDaysBetween(p.children[i].dob, p.children[i+1].dob));
+                    insights.push(`The gap between ${p.name}'s children (<strong>${p.children[i].name}</strong> and <strong>${p.children[i+1].name}</strong>) is <strong>${gap.toLocaleString()}</strong> days.`);
+                }
+            }
+        });
+
+        // Generational benchmarks
+        for (let i = 0; i < people.length; i++) {
+            for (let j = i + 1; j < people.length; j++) {
+                const p1 = people[i];
+                const p2 = people[j];
+                if (p1.wedding && p2.wedding) {
+                    const p1Age = getDaysBetween(p1.dob, p1.wedding);
+                    const p2Age = getDaysBetween(p2.dob, p2.wedding);
+                    const diff = Math.abs(p1Age - p2Age);
+                    if (diff <= 150) {
+                        insights.push(`✨ <strong>Alignment:</strong> <strong>${p1.name}</strong> and <strong>${p2.name}</strong> got married at nearly the exact same age! (Difference of only ${diff} days).`);
+                    }
+                }
+            }
+        }
+
+        document.getElementById('insights-list').innerHTML = insights.map(ins => `<li>${ins}</li>`).join('');
+
+        // 3. Generate Cross-Reference Matrix Table
+        let allMilestonesList = [];
+        people.forEach(p => {
+            Object.keys(p.milestones).forEach(key => {
+                allMilestonesList.push({ label: `${p.name} (${key})`, date: p.milestones[key] });
+            });
+        });
+
+        let tableHtml = '<table><thead><tr><th>Milestone Pivot</th>';
+        allMilestonesList.forEach(m => { tableHtml += `<th>${m.label}</th>`; });
+        tableHtml += '</tr></thead><tbody>';
+
+        allMilestonesList.forEach(rowM => {
+            tableHtml += `<tr><td><strong>${rowM.label}</strong></td>`;
+            allMilestonesList.forEach(colM => {
+                const dayDiff = getDaysBetween(rowM.date, colM.date);
+                tableHtml += `<td>${dayDiff === 0 ? '-' : Math.abs(dayDiff).toLocaleString() + 'd'}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table>';
+        document.getElementById('matrix-table').innerHTML = tableHtml;
+
+        // 4. Generate Gantt Chart View
+        const totalSpan = globalMaxDate - globalMinDate;
+        let ganttHtml = '';
+
+        people.forEach(p => {
+            const startMs = new Date(p.dob).getTime();
+            const endMs = p.dod ? new Date(p.dod).getTime() : today.getTime();
+            const leftPercent = ((startMs - globalMinDate) / totalSpan) * 100;
+            const widthPercent = ((endMs - startMs) / totalSpan) * 100;
+
+            ganttHtml += `
+                <div class="gantt-row">
+                    <div class="gantt-label">${p.name}</div>
+                    <div class="gantt-timeline-wrapper">
+                        <div class="gantt-bar" style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                            ${getDaysBetween(p.dob, p.dod || today).toLocaleString()} days
+                        </div>
+            `;
+
+            Object.keys(p.milestones).forEach(mKey => {
+                if (mKey !== 'DOB' && mKey !== 'DOD') {
+                    const mMs = new Date(p.milestones[mKey]).getTime();
+                    const mLeft = ((mMs - globalMinDate) / totalSpan) * 100;
+                    ganttHtml += `<div class="gantt-milestone" style="left: ${mLeft}%;" title="${p.name} - ${mKey}: ${p.milestones[mKey]}"></div>`;
+                }
+            });
+
+            ganttHtml += `</div></div>`;
+        });
+
+        document.getElementById('gantt-chart').innerHTML = ganttHtml;
+    }
+
+    window.onload = calculateTimeline;
+</script>
+
+</body>
+</html>
