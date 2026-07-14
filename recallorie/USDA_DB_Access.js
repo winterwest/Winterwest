@@ -8,11 +8,25 @@ const USDA_API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
  */
 async function lookupFoodByUPC(upc) {
     // 1. Clean the input to ensure it's just numbers
-    const cleanUPC = upc.trim();
+    let cleanUPC = upc.trim().replace(/\D/g, '');
+
+    // Auto-pad to 12 digits if it's 11 digits (Standard US UPC-A)
+    if (cleanUPC.length === 11) {
+        cleanUPC = '0' + cleanUPC;
+    }
 
     try {
-        // 2. Fetch data from USDA FoodData Central (restricting dataType to Branded items for speed)
-        const response = await fetch(`${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${cleanUPC}&dataType=Branded`);
+        // 2. Fetch data from USDA using an explicit query filter for the barcode
+        // Combining the api_key parameter in the URL with the POST body payload
+        const response = await fetch(`${USDA_API_URL}?api_key=${USDA_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: cleanUPC,       // General query fallback
+                dataType: ["Branded"], // Limits results to barcode consumer items
+                pageSize: 1
+            })
+        });
 
         if (!response.ok) {
             throw new Error(`API Error: ${response.status}`);
@@ -22,26 +36,36 @@ async function lookupFoodByUPC(upc) {
 
         // 3. Check if any matching foods were returned
         if (data.foods && data.foods.length > 0) {
-            const foodItem = data.foods[0]; // Take the most relevant match
+            const foodItem = data.foods[0]; // Grab the most accurate match
 
             // Extract the key nutritional information
             const parsedFood = extractNutritionData(foodItem);
 
-            // 4. Save to your local database (IndexedDB or LocalStorage)
+            // 4. Save to your local database (IndexedDB)
             saveFoodToLocalCache(cleanUPC, parsedFood);
 
             // 5. Populate your app UI with the results
             populateFormWithData(parsedFood);
 
         } else {
-            // USDA API Gotcha Fallback: If barcode isn't found, open manual entry
-            console.warn("UPC not found in USDA database. Redirecting to manual entry.");
-            openManualEntryForm(cleanUPC);
+            // Let's do an alternate string fallback loop if the strict array array returned empty
+            // This queries it via a direct GET string parameter just in case
+            const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${cleanUPC}&dataType=Branded`;
+            const getResponse = await fetch(getUrl);
+            const getData = await getResponse.json();
+
+            if (getData.foods && getData.foods.length > 0) {
+                const parsedFood = extractNutritionData(getData.foods[0]);
+                saveFoodToLocalCache(cleanUPC, parsedFood);
+                populateFormWithData(parsedFood);
+            } else {
+                console.warn("UPC not found in USDA database. Redirecting to manual entry.");
+                openManualEntryForm(cleanUPC);
+            }
         }
 
     } catch (error) {
         console.error("Failed to fetch food data:", error);
-        // Fallback fallback: Network or API failure should also let them type it manually
         openManualEntryForm(cleanUPC);
     }
 }
@@ -52,15 +76,13 @@ async function lookupFoodByUPC(upc) {
 function extractNutritionData(foodItem) {
     const nutrients = foodItem.foodNutrients || [];
 
-    // Helper to extract values based on the Swagger schema structure
+    // Helper to extract values based on the standardized nutrient IDs
     const findNutrientValue = (id) => {
-        // Look up by standardized government nutrient IDs
         const match = nutrients.find(n => n.nutrientId === id || n.id === id);
         return match ? match.value : 0;
     };
 
     return {
-        // Main Swagger root properties
         description: foodItem.description,
         brand: foodItem.brandOwner || 'Generic',
         fdcId: foodItem.fdcId,
