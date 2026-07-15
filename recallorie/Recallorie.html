@@ -255,6 +255,26 @@
         .btn-delete:active {
             background-color: #ffebee;
         }
+
+        .item-row.result {
+            border-left: 4px solid #adb5bd;
+        }
+        .item-row.result:active {
+            background-color: var(--primary-light);
+        }
+
+        /* Portion weight row inside the active food card */
+        .portion-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        .portion-row label { font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; }
+        .portion-row input { padding: 8px; }
+        .serving-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -276,13 +296,22 @@
     </div>
 
     <div class="search-container">
-        <input type="text" id="upc-input" placeholder="Scan or type UPC Barcode..." inputmode="numeric">
+        <input type="text" id="upc-input" placeholder="Scan UPC or type a food name..." inputmode="text">
         <button class="btn-primary" onclick="handleScan()">Look Up</button>
     </div>
+
+    <ul id="search-results-container" class="item-list"></ul>
 
     <div id="food-display" class="food-card" style="display: none;">
         <h3 id="food-title" style="margin: 0 0 4px 0; font-size: 1.15rem;"></h3>
         <small id="food-brand" style="color: var(--text-muted); display: block; margin-bottom: 12px;"></small>
+
+        <div class="portion-row">
+            <label for="portion-weight">Portion (g):</label>
+            <input type="number" id="portion-weight" min="0" step="1" oninput="onPortionChange()">
+        </div>
+        <div id="serving-hint" class="serving-hint"></div>
+
         <div class="macro-grid">
             <div class="macro-box"><span class="macro-val" id="val-cals">0</span>Cals</div>
             <div class="macro-box"><span class="macro-val" id="val-protein">0g</span>Prot</div>
@@ -307,8 +336,8 @@
     </ul>
 </div>
 
-<script src="db.js?v=1.6"></script>
-<script src="USDA_DB_Access.js?v=1.6"></script>
+<script src="db.js?v=1.7"></script>
+<script src="USDA_DB_Access.js?v=1.7"></script>
 <script>
     let currentActiveFood = null;
     let cachedFoodsList = []; // Global holder for local recall filtering
@@ -318,10 +347,21 @@
         refreshAppUI();
     });
 
-    // Handle initial scan input
+    // Handle initial scan input - branches on whether the input is a pure
+    // barcode (digits/spaces/dashes only) or a food name search.
     async function handleScan() {
-        const upc = document.getElementById('upc-input').value.trim();
-        if (!upc) return;
+        const rawInput = document.getElementById('upc-input').value.trim();
+        if (!rawInput) return;
+
+        document.getElementById('search-results-container').innerHTML = '';
+
+        const isBarcodeInput = /^[\d\s-]+$/.test(rawInput);
+        if (!isBarcodeInput) {
+            await handleNameSearch(rawInput);
+            return;
+        }
+
+        const upc = rawInput.replace(/\D/g, '');
 
         // Check local DB first
         const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -342,20 +382,84 @@
         }
     }
 
-    // Displays targeted food item in the active container card
+    // Name search returns multiple ambiguous candidates - show a picker
+    // instead of jumping straight to the food card.
+    async function handleNameSearch(queryText) {
+        console.log(`Searching by name: "${queryText}"`);
+        const results = await searchFoodsByName(queryText);
+        const container = document.getElementById('search-results-container');
+
+        if (results.length === 0) {
+            container.innerHTML = `<li style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.9rem;">No matches found for "${queryText}".</li>`;
+            return;
+        }
+
+        container.innerHTML = results.map((item, idx) => `
+            <li class="item-row result" onclick='selectSearchResult(${idx})'>
+                <div class="item-details">
+                    <span class="item-title">${item.description}</span>
+                    <span class="item-brand">${item.brand}</span>
+                </div>
+                <span class="item-badge">${Math.round(item.caloriesPer100g || 0)} Cal/100g</span>
+            </li>
+        `).join('');
+
+        // Stash results so the picker's onclick (plain index, to avoid
+        // re-serializing full objects into HTML attributes) can find them.
+        window.__lastSearchResults = results;
+    }
+
+    function selectSearchResult(idx) {
+        const item = window.__lastSearchResults[idx];
+        if (!item) return;
+        saveFoodToLocalCache(item.cacheKey, item);
+        document.getElementById('search-results-container').innerHTML = '';
+        document.getElementById('upc-input').value = '';
+        displayFood({ ...item, upc: item.cacheKey });
+        refreshAppUI();
+    }
+
+    // Displays targeted food item in the active container card. Foods are
+    // cached per-100g (USDA's own reporting basis), so we scale to the
+    // portion weight in the "Portion (g)" box rather than showing raw values.
     function displayFood(food) {
         currentActiveFood = food;
         document.getElementById('food-title').innerText = food.description;
         document.getElementById('food-brand').innerText = food.brand;
-        document.getElementById('val-cals').innerText = Math.round(food.calories);
-        document.getElementById('val-protein').innerText = Math.round(food.protein) + 'g';
-        document.getElementById('val-carbs').innerText = Math.round(food.carbs) + 'g';
-        document.getElementById('val-fat').innerText = Math.round(food.fat) + 'g';
+
+        const defaultGrams = (food.servingSize && (!food.servingSizeUnit || /g|gram/i.test(food.servingSizeUnit)))
+            ? Math.round(food.servingSize)
+            : 100;
+        document.getElementById('portion-weight').value = defaultGrams;
+
+        const hintEl = document.getElementById('serving-hint');
+        hintEl.innerText = food.householdServingText
+            ? `Label serving: ${food.householdServingText}`
+            : (food.servingSize ? `Label serving: ${food.servingSize}${food.servingSizeUnit || ''}` : '');
+
+        renderMacrosForCurrentPortion();
 
         // Ensure UI displays card and scrolls to it
         const card = document.getElementById('food-display');
         card.style.display = 'block';
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Recomputes displayed macros from the per-100g baseline whenever the
+    // portion weight changes - no network call needed.
+    function renderMacrosForCurrentPortion() {
+        if (!currentActiveFood) return;
+        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
+        const scaled = scaleFoodToGrams(currentActiveFood, grams);
+
+        document.getElementById('val-cals').innerText = Math.round(scaled.calories);
+        document.getElementById('val-protein').innerText = Math.round(scaled.protein) + 'g';
+        document.getElementById('val-carbs').innerText = Math.round(scaled.carbs) + 'g';
+        document.getElementById('val-fat').innerText = Math.round(scaled.fat) + 'g';
+    }
+
+    function onPortionChange() {
+        renderMacrosForCurrentPortion();
     }
 
     // Triggered when USDA lookup finds food
@@ -368,18 +472,21 @@
     function openManualEntryForm(upc) {
         const name = prompt("UPC Barcode not recognized. Let's make a custom entry.\n\nEnter Food Name:");
         if (!name) return;
-        const cals = parseFloat(prompt("Enter Calories (kcal):") || 0);
-        const prot = parseFloat(prompt("Enter Protein (g):") || 0);
-        const carbs = parseFloat(prompt("Enter Carbohydrates (g):") || 0);
-        const fat = parseFloat(prompt("Enter Fat (g):") || 0);
+        const cals = parseFloat(prompt("Enter Calories (per 100g):") || 0);
+        const prot = parseFloat(prompt("Enter Protein (g per 100g):") || 0);
+        const carbs = parseFloat(prompt("Enter Carbohydrates (g per 100g):") || 0);
+        const fat = parseFloat(prompt("Enter Fat (g per 100g):") || 0);
 
         const newFood = {
             description: name,
             brand: "Custom Entry",
-            calories: cals,
-            protein: prot,
-            carbs: carbs,
-            fat: fat
+            caloriesPer100g: cals,
+            proteinPer100g: prot,
+            carbsPer100g: carbs,
+            fatPer100g: fat,
+            servingSize: null,
+            servingSizeUnit: null,
+            householdServingText: null
         };
 
         saveFoodToLocalCache(upc, newFood);
@@ -387,11 +494,23 @@
         refreshAppUI();
     }
 
-    // Log the active meal to running daily timeline
+    // Log the active meal to running daily timeline, using the actual scaled
+    // portion (grams entered), not the per-100g baseline.
     async function logCurrentMeal() {
         if (!currentActiveFood) return;
 
-        await logMealToDB(currentActiveFood);
+        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
+        const scaled = scaleFoodToGrams(currentActiveFood, grams);
+
+        await logMealToDB({
+            description: currentActiveFood.description,
+            brand: currentActiveFood.brand,
+            calories: scaled.calories,
+            protein: scaled.protein,
+            carbs: scaled.carbs,
+            fat: scaled.fat,
+            portionGrams: grams
+        });
 
         // Clean form and focus
         document.getElementById('food-display').style.display = 'none';
@@ -472,7 +591,7 @@
                     <span class="item-title">${item.description}</span>
                     <span class="item-brand">${item.brand}</span>
                 </div>
-                <span class="item-badge">${Math.round(item.calories)} Cal</span>
+                <span class="item-badge">${Math.round(item.caloriesPer100g || 0)} Cal/100g</span>
             </li>
         `).join('');
     }
