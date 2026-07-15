@@ -41,23 +41,24 @@ async function lookupFoodByUPC(upc) {
     // 2. Loop through format variations
     for (let currentUPC of upcFormatsToTry) {
         try {
-            console.log(`Querying USDA for barcode: ${currentUPC}`);
-
-            const response = await fetch(`${USDA_API_URL}?api_key=${USDA_API_KEY}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    query: currentUPC,
-                    dataType: ["Branded"], // Required to search by UPC
-                    // IMPORTANT: pageSize was 1, which meant we only ever looked
-                    // at the top text-search hit. The exact GTIN match is often
-                    // NOT ranked first for a pure-digit query. Pull more
-                    // candidates and scan them all for a real match.
-                    pageSize: 25
-                })
+            // Using GET with query-string params instead of POST+JSON. A POST
+            // with a Content-Type: application/json header is a "preflighted"
+            // CORS request - the browser sends an OPTIONS request first, and
+            // if the API doesn't answer that preflight with the right headers,
+            // the browser blocks the whole thing client-side before any HTTP
+            // status is ever produced. That matches what we saw in the console:
+            // no response, no error body, just silence. A plain GET with no
+            // custom headers is a "simple request" and is never preflighted.
+            const params = new URLSearchParams({
+                api_key: USDA_API_KEY,
+                query: currentUPC,
+                dataType: 'Branded',
+                pageSize: '25'
             });
+            const requestUrl = `${USDA_API_URL}?${params.toString()}`;
+            console.log(`Querying USDA for barcode: ${currentUPC} -> ${requestUrl.replace(USDA_API_KEY, 'API_KEY')}`);
+
+            const response = await fetch(requestUrl, { method: 'GET' });
 
             if (!response.ok) {
                 // Read the body before throwing - USDA returns a JSON error
@@ -83,7 +84,7 @@ async function lookupFoodByUPC(upc) {
                 }
             }
         } catch (error) {
-            console.error(`Error querying UPC ${currentUPC}:`, error);
+            console.error(`Error querying UPC ${currentUPC}: [${error.name}] ${error.message}`, error);
         }
     }
 
@@ -97,9 +98,72 @@ async function lookupFoodByUPC(upc) {
 
         // Send to UI
         populateFormWithData(parsedFood);
-    } else {
-        console.warn("UPC not found in USDA database. Redirecting to manual entry.");
-        openManualEntryForm(cleanUPC);
+        return;
+    }
+
+    // USDA's Branded Foods database has real coverage gaps (it's built from
+    // GS1/GDSN + Label Insight submissions, and Label Insight stopped feeding
+    // it new data in Nov 2023). Before giving up to manual entry, try Open
+    // Food Facts - free, no API key, crowd-sourced from actual product labels,
+    // much broader real-world barcode coverage.
+    console.warn("Not in USDA. Trying Open Food Facts...");
+    const offFood = await lookupFoodOnOpenFoodFacts(cleanUPC);
+    if (offFood) {
+        console.log("Success via Open Food Facts! Found item: ", offFood.description);
+        saveFoodToLocalCache(cleanUPC, offFood);
+        populateFormWithData(offFood);
+        return;
+    }
+
+    console.warn("UPC not found in USDA or Open Food Facts. Redirecting to manual entry.");
+    openManualEntryForm(cleanUPC);
+}
+
+/**
+ * Fallback lookup against Open Food Facts, keyed straight off the barcode
+ * (no fuzzy text search involved, so no format-variant guessing needed).
+ * Returns data in the same per-100g shape as extractNutritionData(), or
+ * null if not found.
+ */
+async function lookupFoodOnOpenFoodFacts(cleanUPC) {
+    try {
+        const url = `https://world.openfoodfacts.org/api/v2/product/${cleanUPC}.json`;
+        console.log(`Querying Open Food Facts: ${url}`);
+        const response = await fetch(url, { method: 'GET' });
+
+        if (!response.ok) {
+            console.error(`Open Food Facts returned ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        if (data.status !== 1 || !data.product) {
+            console.log('Open Food Facts: no product for this barcode.');
+            return null;
+        }
+
+        const p = data.product;
+        const n = p.nutriments || {};
+
+        return {
+            description: p.product_name || p.generic_name || `Product ${cleanUPC}`,
+            brand: p.brands || 'Generic',
+            fdcId: null,
+
+            // Open Food Facts reports nutriments per 100g directly under
+            // the "_100g" suffixed keys, matching our per-100g storage basis.
+            caloriesPer100g: n['energy-kcal_100g'] || 0,
+            proteinPer100g: n['proteins_100g'] || 0,
+            carbsPer100g: n['carbohydrates_100g'] || 0,
+            fatPer100g: n['fat_100g'] || 0,
+
+            servingSize: p.serving_quantity ? Number(p.serving_quantity) : null,
+            servingSizeUnit: p.serving_quantity ? 'g' : null,
+            householdServingText: p.serving_size || null
+        };
+    } catch (error) {
+        console.error(`Error querying Open Food Facts: [${error.name}] ${error.message}`, error);
+        return null;
     }
 }
 
