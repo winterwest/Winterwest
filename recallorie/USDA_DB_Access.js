@@ -11,24 +11,32 @@ async function lookupFoodByUPC(upc) {
     let cleanUPC = upc.trim().replace(/\D/g, '');
     if (!cleanUPC) return;
 
-    // We will try both the exact UPC typed, and its alternate variation (padding/depadding the leading zero)
+    // Standard US UPCs are 12 digits. Let's provide both the 12-digit padded and 11-digit depadded versions.
     let upcFormatsToTry = [cleanUPC];
-    
-    if (cleanUPC.startsWith('0')) {
-        upcFormatsToTry.push(cleanUPC.substring(1)); // Try without leading zero (11 digits)
-    } else {
-        upcFormatsToTry.push('0' + cleanUPC); // Try with a leading zero (12 digits)
+    if (cleanUPC.length === 11) {
+        upcFormatsToTry.unshift('0' + cleanUPC); // Try 12-digit first
+    } else if (cleanUPC.length === 12 && cleanUPC.startsWith('0')) {
+        upcFormatsToTry.push(cleanUPC.substring(1)); // Alternate: drop leading zero
     }
 
     let foundFood = null;
-    let finalUPCUsed = cleanUPC;
 
-    // 2. Loop through our format variations until we get a hit!
+    // 2. Loop through format variations using a precise POST request
     for (let currentUPC of upcFormatsToTry) {
         try {
-            console.log(`Trying USDA lookup with format: ${currentUPC}`);
-            const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${currentUPC}`;
-            const response = await fetch(getUrl);
+            console.log(`Querying USDA with strict barcode payload for: ${currentUPC}`);
+            
+            const response = await fetch(`${USDA_API_URL}?api_key=${USDA_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: currentUPC,
+                    dataType: ["Branded"], // Required to search by UPC
+                    pageSize: 1
+                })
+            });
 
             if (!response.ok) {
                 throw new Error(`API Error: ${response.status}`);
@@ -37,27 +45,30 @@ async function lookupFoodByUPC(upc) {
             const data = await response.json();
 
             if (data.foods && data.foods.length > 0) {
-                foundFood = data.foods[0];
-                finalUPCUsed = currentUPC;
-                break; // Exit the loop as soon as we find a match!
+                // Confirm the matched product actually matches our UPC to prevent fuzzy matching errors
+                const match = data.foods[0];
+                if (match.gtinUpc && match.gtinUpc.replace(/\D/g, '').includes(currentUPC)) {
+                    foundFood = match;
+                    break;
+                }
             }
         } catch (error) {
-            console.error(`Error querying format ${currentUPC}:`, error);
+            console.error(`Error querying UPC ${currentUPC}:`, error);
         }
     }
 
-    // 3. Process the found match or fallback to manual entry
+    // 3. Update the UI or prompt manual entry
     if (foundFood) {
         console.log("Success! Found item: ", foundFood.description);
         const parsedFood = extractNutritionData(foundFood);
 
-        // Save to our local IndexedDB using the cleaned barcode
+        // Save to our local IndexedDB using the barcode
         saveFoodToLocalCache(cleanUPC, parsedFood);
 
         // Send to UI
         populateFormWithData(parsedFood);
     } else {
-        console.warn("UPC not found in USDA database under any common format. Redirecting to manual entry.");
+        console.warn("UPC not found in USDA database. Redirecting to manual entry.");
         openManualEntryForm(cleanUPC);
     }
 }
