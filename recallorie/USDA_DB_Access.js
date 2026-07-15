@@ -9,43 +9,55 @@ const USDA_API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 async function lookupFoodByUPC(upc) {
     // 1. Clean the input to ensure it's just numbers
     let cleanUPC = upc.trim().replace(/\D/g, '');
+    if (!cleanUPC) return;
+
+    // We will try both the exact UPC typed, and its alternate variation (padding/depadding the leading zero)
+    let upcFormatsToTry = [cleanUPC];
     
-    // Auto-pad to 12 digits if it's 11 digits (Standard US UPC-A)
-    if (cleanUPC.length === 11) {
-        cleanUPC = '0' + cleanUPC;
+    if (cleanUPC.startsWith('0')) {
+        upcFormatsToTry.push(cleanUPC.substring(1)); // Try without leading zero (11 digits)
+    } else {
+        upcFormatsToTry.push('0' + cleanUPC); // Try with a leading zero (12 digits)
     }
 
-    try {
-        // 2. Simple, robust GET request that is universally supported
-        const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${cleanUPC}`;
-        const response = await fetch(getUrl);
+    let foundFood = null;
+    let finalUPCUsed = cleanUPC;
 
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+    // 2. Loop through our format variations until we get a hit!
+    for (let currentUPC of upcFormatsToTry) {
+        try {
+            console.log(`Trying USDA lookup with format: ${currentUPC}`);
+            const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${currentUPC}`;
+            const response = await fetch(getUrl);
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.foods && data.foods.length > 0) {
+                foundFood = data.foods[0];
+                finalUPCUsed = currentUPC;
+                break; // Exit the loop as soon as we find a match!
+            }
+        } catch (error) {
+            console.error(`Error querying format ${currentUPC}:`, error);
         }
+    }
 
-        const data = await response.json();
+    // 3. Process the found match or fallback to manual entry
+    if (foundFood) {
+        console.log("Success! Found item: ", foundFood.description);
+        const parsedFood = extractNutritionData(foundFood);
 
-        // 3. Check if any matching foods were returned
-        if (data.foods && data.foods.length > 0) {
-            const foodItem = data.foods[0]; // Grab the first matched item
+        // Save to our local IndexedDB using the cleaned barcode
+        saveFoodToLocalCache(cleanUPC, parsedFood);
 
-            // Extract the key nutritional information
-            const parsedFood = extractNutritionData(foodItem);
-
-            // 4. Save to your local database (IndexedDB)
-            saveFoodToLocalCache(cleanUPC, parsedFood);
-
-            // 5. Populate your app UI with the results
-            populateFormWithData(parsedFood);
-
-        } else {
-            console.warn("UPC not found in USDA database. Redirecting to manual entry.");
-            openManualEntryForm(cleanUPC);
-        }
-
-    } catch (error) {
-        console.error("Failed to fetch food data:", error);
+        // Send to UI
+        populateFormWithData(parsedFood);
+    } else {
+        console.warn("UPC not found in USDA database under any common format. Redirecting to manual entry.");
         openManualEntryForm(cleanUPC);
     }
 }
