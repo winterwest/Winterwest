@@ -2,98 +2,259 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Recallorie</title>
     <style>
+        /* Modern Mobile Skin Styling */
         :root {
-            --primary: #2e7d32;
-            --bg: #f8f9fa;
-            --card-bg: #ffffff;
-            --text: #212529;
+            --primary-color: #2e7d32;
+            --primary-light: #e8f5e9;
+            --accent-color: #f57c00;
+            --bg-color: #f4f6f8;
+            --card-color: #ffffff;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --border-radius: 14px;
+            --transition: all 0.2s ease-in-out;
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 16px;
-        }
-        .container { max-width: 500px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 24px; }
-        h1 { margin: 0; color: var(--primary); font-size: 2rem; }
 
-        .search-box {
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding-bottom: 40px;
+        }
+
+        header {
+            text-align: center;
+            margin: 20px 0 16px 0;
+        }
+
+        header h1 {
+            margin: 0;
+            color: var(--primary-color);
+            font-weight: 800;
+            font-size: 2.2rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            margin: 2px 0 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Daily Progress Summary Card */
+        .dashboard-card {
+            background: var(--card-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .calories-tally {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .calories-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Search / Input Fields */
+        .search-container {
             display: flex;
             gap: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
+
         input {
             flex: 1;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: var(--border-radius);
             font-size: 1rem;
-        }
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
+            background: var(--card-color);
+            outline: none;
+            transition: var(--transition);
         }
 
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        button.btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 22px;
+            border-radius: var(--border-radius);
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        button.btn-primary:active {
+            transform: scale(0.97);
+        }
+
+        /* Active Results Food Card */
         .food-card {
-            background: var(--card-bg);
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: var(--card-color);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
             margin-bottom: 20px;
+            border-top: 5px solid var(--primary-color);
+            animation: slideIn 0.3s ease-out;
         }
-        .portion-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .portion-row label { font-size: 0.9rem; color: #6c757d; white-space: nowrap; }
-        .portion-row input { padding: 8px; }
-        .serving-hint { font-size: 0.8rem; color: #6c757d; margin-top: 4px; }
+
         .macro-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
-            text-align: center;
-            margin-top: 12px;
+            margin: 16px 0;
         }
-        .macro-box { background: #f1f3f5; padding: 8px; border-radius: 6px; font-size: 0.9rem; }
-        .macro-val { font-weight: bold; display: block; color: var(--primary); }
 
-        .history-list { list-style: none; padding: 0; }
-        .history-item {
-            background: var(--card-bg);
-            padding: 12px;
-            border-radius: 8px;
+        .macro-box {
+            background: var(--bg-color);
+            padding: 10px 4px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .macro-val {
+            font-weight: 700;
+            display: block;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 24px 0 12px 0;
+        }
+
+        .section-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Interactive Filter Input */
+        .filter-input {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            border-radius: 10px;
+        }
+
+        /* Clean List Visuals */
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .item-row {
+            background: var(--card-color);
+            padding: 14px 16px;
+            border-radius: var(--border-radius);
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: var(--transition);
         }
-        .result-item {
-            background: var(--card-bg);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
+
+        .item-row:active {
+            transform: scale(0.99);
+            background-color: var(--primary-light);
+        }
+
+        .item-row.logged {
+            border-left: 4px solid var(--accent-color);
+            cursor: default;
+        }
+
+        .item-row.recall {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            max-width: 70%;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-brand {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .item-badge {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 0.95rem;
+        }
+
+        .item-badge.logged {
+            color: var(--accent-color);
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #e53935;
+            padding: 8px;
+            font-size: 1.1rem;
             cursor: pointer;
-            border-left: 4px solid #adb5bd;
+            border-radius: 50%;
+            margin-left: 8px;
         }
-        .result-item:hover { border-left-color: var(--primary); }
-        .result-item small { color: #6c757d; }
+
+        .btn-delete:active {
+            background-color: #ffebee;
+        }
     </style>
 </head>
 <body>
@@ -104,34 +265,45 @@
         <p>Effortless Diet Memory</p>
     </header>
 
-    <div class="search-box">
-        <input type="text" id="upc-input" placeholder="Scan UPC or type a food name..." inputmode="text">
-        <button onclick="handleScan()">Look Up</button>
+    <div class="dashboard-card">
+        <div id="dash-calories" class="calories-tally">0</div>
+        <div class="calories-label">Logged Calories Today</div>
+        <div class="macro-grid" style="margin-bottom: 0;">
+            <div class="macro-box"><span id="dash-protein" class="macro-val">0g</span>Prot</div>
+            <div class="macro-box"><span id="dash-carbs" class="macro-val">0g</span>Carb</div>
+            <div class="macro-box"><span id="dash-fat" class="macro-val">0g</span>Fat</div>
+        </div>
     </div>
 
-    <ul id="search-results-container" class="history-list"></ul>
+    <div class="search-container">
+        <input type="text" id="upc-input" placeholder="Scan or type UPC Barcode..." inputmode="numeric">
+        <button class="btn-primary" onclick="handleScan()">Look Up</button>
+    </div>
 
     <div id="food-display" class="food-card" style="display: none;">
-        <h3 id="food-title" style="margin: 0 0 4px 0;"></h3>
-        <small id="food-brand" style="color: #6c757d;"></small>
-
-        <div class="portion-row">
-            <label for="portion-weight">Portion (g):</label>
-            <input type="number" id="portion-weight" min="0" step="1" oninput="onPortionChange()">
-        </div>
-        <div id="serving-hint" class="serving-hint"></div>
-
+        <h3 id="food-title" style="margin: 0 0 4px 0; font-size: 1.15rem;"></h3>
+        <small id="food-brand" style="color: var(--text-muted); display: block; margin-bottom: 12px;"></small>
         <div class="macro-grid">
             <div class="macro-box"><span class="macro-val" id="val-cals">0</span>Cals</div>
             <div class="macro-box"><span class="macro-val" id="val-protein">0g</span>Prot</div>
             <div class="macro-box"><span class="macro-val" id="val-carbs">0g</span>Carb</div>
             <div class="macro-box"><span class="macro-val" id="val-fat">0g</span>Fat</div>
         </div>
-        <button style="width: 100%; margin-top: 12px;" onclick="logCurrentMeal()">Log This Meal</button>
+        <button class="btn-primary" style="width: 100%; margin-top: 8px;" onclick="logCurrentMeal()">Log This Meal</button>
     </div>
 
-    <h3>Quick Recall (Past Food Entries)</h3>
-    <ul id="history-container" class="history-list">
+    <div class="section-header">
+        <h3>Eaten Today</h3>
+    </div>
+    <ul id="log-container" class="item-list">
+    </ul>
+
+    <div class="section-header">
+        <h3>Quick Recall</h3>
+    </div>
+    <input type="text" id="filter-input" class="filter-input" placeholder="Search saved items by name..." oninput="filterRecallList()">
+
+    <ul id="history-container" class="item-list">
     </ul>
 </div>
 
@@ -139,179 +311,170 @@
 <script src="USDA_DB_Access.js?v=1.6"></script>
 <script>
     let currentActiveFood = null;
+    let cachedFoodsList = []; // Global holder for local recall filtering
 
-    // Load DB and history on startup
     window.addEventListener('DOMContentLoaded', async () => {
         await initDB();
-        updateHistoryUI();
+        refreshAppUI();
     });
 
+    // Handle initial scan input
     async function handleScan() {
-        const rawInput = document.getElementById('upc-input').value.trim();
-        if (!rawInput) return;
+        const upc = document.getElementById('upc-input').value.trim();
+        if (!upc) return;
 
-        // Clear any previous search-results picker
-        document.getElementById('search-results-container').innerHTML = '';
-
-        // If the input contains any non-digit character, treat it as a food
-        // name search rather than a barcode. Pure digits (with optional
-        // spaces/dashes from a scanner) go through the barcode flow.
-        const isBarcodeInput = /^[\d\s-]+$/.test(rawInput);
-
-        if (!isBarcodeInput) {
-            await handleNameSearch(rawInput);
-            return;
-        }
-
-        const upc = rawInput;
-
-        // 1. Check local DB first for instant recall!
+        // Check local DB first
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
         const localMatch = await new Promise(r => {
-            const req = store.get(upc.trim().replace(/\D/g, ''));
+            const req = store.get(upc);
             req.onsuccess = () => r(req.result);
         });
 
         if (localMatch) {
-            console.log("Local hit! Instant recall applied.");
+            console.log("Found cached barcode item!");
             displayFood(localMatch);
-            // Update timestamp to keep it fresh in history
-            saveFoodToLocalCache(localMatch.upc, localMatch);
-            updateHistoryUI();
+            saveFoodToLocalCache(upc, localMatch); // Bump timestamp
+            refreshAppUI();
         } else {
-            // 2. Network fallback to USDA API
-            console.log("Not cached. Fetching from USDA...");
+            console.log("Querying online API...");
             await lookupFoodByUPC(upc);
         }
     }
 
-    // Name search returns multiple candidates (ambiguous by nature), so we
-    // show a picker list instead of jumping straight to the food card.
-    async function handleNameSearch(queryText) {
-        console.log(`Searching by name: "${queryText}"`);
-        const results = await searchFoodsByName(queryText);
-        const container = document.getElementById('search-results-container');
-
-        if (results.length === 0) {
-            container.innerHTML = `<li class="result-item">No matches found for "${queryText}".</li>`;
-            return;
-        }
-
-        container.innerHTML = results.map((item, idx) => `
-            <li class="result-item" onclick='selectSearchResult(${idx})'>
-                <strong>${item.description}</strong><br>
-                <small>${item.brand} &middot; ${Math.round(item.caloriesPer100g || 0)} Cal/100g</small>
-            </li>
-        `).join('');
-
-        // Stash results so the picker's onclick (which only gets a plain index,
-        // to avoid re-serializing full objects into HTML attributes) can find them.
-        window.__lastSearchResults = results;
-    }
-
-    function selectSearchResult(idx) {
-        const item = window.__lastSearchResults[idx];
-        if (!item) return;
-        // Cache it under its fdcId-based key so it shows up in Quick Recall too.
-        saveFoodToLocalCache(item.cacheKey, item);
-        document.getElementById('search-results-container').innerHTML = '';
-        displayFood({ ...item, upc: item.cacheKey });
-        updateHistoryUI();
-    }
-
-    // Renders a food using its cached per-100g values, scaled to the
-    // portion weight currently in the "Portion (g)" box.
+    // Displays targeted food item in the active container card
     function displayFood(food) {
         currentActiveFood = food;
         document.getElementById('food-title').innerText = food.description;
         document.getElementById('food-brand').innerText = food.brand;
+        document.getElementById('val-cals').innerText = Math.round(food.calories);
+        document.getElementById('val-protein').innerText = Math.round(food.protein) + 'g';
+        document.getElementById('val-carbs').innerText = Math.round(food.carbs) + 'g';
+        document.getElementById('val-fat').innerText = Math.round(food.fat) + 'g';
 
-        // Default the portion box to the label's serving size (in grams) if we
-        // have one, otherwise fall back to 100g.
-        const defaultGrams = (food.servingSize && (!food.servingSizeUnit || /g|gram/i.test(food.servingSizeUnit)))
-            ? Math.round(food.servingSize)
-            : 100;
-        document.getElementById('portion-weight').value = defaultGrams;
-
-        const hintEl = document.getElementById('serving-hint');
-        hintEl.innerText = food.householdServingText
-            ? `Label serving: ${food.householdServingText}`
-            : (food.servingSize ? `Label serving: ${food.servingSize}${food.servingSizeUnit || ''}` : '');
-
-        renderMacrosForCurrentPortion();
-        document.getElementById('food-display').style.display = 'block';
+        // Ensure UI displays card and scrolls to it
+        const card = document.getElementById('food-display');
+        card.style.display = 'block';
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Recomputes displayed macros from the per-100g baseline whenever the
-    // portion weight changes - no network call needed.
-    function renderMacrosForCurrentPortion() {
-        if (!currentActiveFood) return;
-        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
-        const scaled = scaleFoodToGrams(currentActiveFood, grams);
-
-        document.getElementById('val-cals').innerText = Math.round(scaled.calories);
-        document.getElementById('val-protein').innerText = Math.round(scaled.protein) + 'g';
-        document.getElementById('val-carbs').innerText = Math.round(scaled.carbs) + 'g';
-        document.getElementById('val-fat').innerText = Math.round(scaled.fat) + 'g';
-    }
-
-    function onPortionChange() {
-        renderMacrosForCurrentPortion();
-    }
-
-    // Connects USDA_DB_Access.js lookup directly to the UI
+    // Triggered when USDA lookup finds food
     function populateFormWithData(foodData) {
         displayFood(foodData);
-        updateHistoryUI(); // Refresh list to show newly discovered item
+        refreshAppUI();
     }
 
-    // Graceful fallback if UPC barcode is unknown to the USDA database
+    // Manual Form Fallback Handler
     function openManualEntryForm(upc) {
-        alert(`UPC ${upc} was not found. Let's enter it manually.`);
-        const name = prompt("Enter food name:");
+        const name = prompt("UPC Barcode not recognized. Let's make a custom entry.\n\nEnter Food Name:");
         if (!name) return;
-        const cals = parseFloat(prompt("Enter calories (per 100g):") || 0);
-        const prot = parseFloat(prompt("Enter protein (g per 100g):") || 0);
-        const carbs = parseFloat(prompt("Enter carbs (g per 100g):") || 0);
-        const fat = parseFloat(prompt("Enter fat (g per 100g):") || 0);
+        const cals = parseFloat(prompt("Enter Calories (kcal):") || 0);
+        const prot = parseFloat(prompt("Enter Protein (g):") || 0);
+        const carbs = parseFloat(prompt("Enter Carbohydrates (g):") || 0);
+        const fat = parseFloat(prompt("Enter Fat (g):") || 0);
 
         const newFood = {
             description: name,
-            brand: "Custom",
-            caloriesPer100g: cals,
-            proteinPer100g: prot,
-            carbsPer100g: carbs,
-            fatPer100g: fat,
-            servingSize: null,
-            servingSizeUnit: null,
-            householdServingText: null
+            brand: "Custom Entry",
+            calories: cals,
+            protein: prot,
+            carbs: carbs,
+            fat: fat
         };
 
-        // Cache manual entry for quick recall in the future!
         saveFoodToLocalCache(upc, newFood);
         displayFood(newFood);
-        updateHistoryUI();
+        refreshAppUI();
     }
 
-    async function updateHistoryUI() {
-        const history = await getAllCachedFoods();
+    // Log the active meal to running daily timeline
+    async function logCurrentMeal() {
+        if (!currentActiveFood) return;
+
+        await logMealToDB(currentActiveFood);
+
+        // Clean form and focus
+        document.getElementById('food-display').style.display = 'none';
+        document.getElementById('upc-input').value = '';
+        currentActiveFood = null;
+
+        refreshAppUI();
+    }
+
+    // Delete a logged element
+    async function deleteLoggedMeal(id) {
+        await deleteLoggedMealFromDB(id);
+        refreshAppUI();
+    }
+
+    // Core UI Coordinator
+    async function refreshAppUI() {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // 1. Populate Daily Log and Tally
+        const logs = await getMealsLoggedForDate(todayStr);
+        let totalCals = 0, totalProt = 0, totalCarbs = 0, totalFat = 0;
+
+        const logContainer = document.getElementById('log-container');
+        if (logs.length === 0) {
+            logContainer.innerHTML = `<li style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.9rem;">No meals logged yet today.</li>`;
+        } else {
+            logContainer.innerHTML = logs.map(item => {
+                totalCals += item.calories;
+                totalProt += item.protein;
+                totalCarbs += item.carbs;
+                totalFat += item.fat;
+
+                return `
+                    <li class="item-row logged">
+                        <div class="item-details">
+                            <span class="item-title">${item.description}</span>
+                            <span class="item-brand">${item.brand}</span>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <span class="item-badge logged">${Math.round(item.calories)} Cal</span>
+                            <button class="btn-delete" onclick="deleteLoggedMeal(${item.id})">🗑️</button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        // Update dashboard numbers
+        document.getElementById('dash-calories').innerText = Math.round(totalCals);
+        document.getElementById('dash-protein').innerText = Math.round(totalProt) + 'g';
+        document.getElementById('dash-carbs').innerText = Math.round(totalCarbs) + 'g';
+        document.getElementById('dash-fat').innerText = Math.round(totalFat) + 'g';
+
+        // 2. Fetch all cached barcode foods for the Quick Recall timeline
+        cachedFoodsList = await getAllCachedFoods();
+        filterRecallList(); // Populates list based on search bar string
+    }
+
+    // Dynamically filters and displays Quick Recall list using the filter input
+    function filterRecallList() {
+        const query = document.getElementById('filter-input').value.toLowerCase();
         const container = document.getElementById('history-container');
-        container.innerHTML = history.map(item => `
-            <li class="history-item" onclick='displayFood(${JSON.stringify(item)})'>
-                <div>
-                    <strong>${item.description}</strong><br>
-                    <small>${item.brand}</small>
+
+        const filtered = cachedFoodsList.filter(item =>
+            item.description.toLowerCase().includes(query) ||
+            item.brand.toLowerCase().includes(query)
+        );
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<li style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.9rem;">No matching foods saved.</li>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map(item => `
+            <li class="item-row recall" onclick='displayFood(${JSON.stringify(item)})'>
+                <div class="item-details">
+                    <span class="item-title">${item.description}</span>
+                    <span class="item-brand">${item.brand}</span>
                 </div>
-                <span style="font-weight:bold; color:var(--primary);">${Math.round(item.caloriesPer100g || 0)} Cal/100g</span>
+                <span class="item-badge">${Math.round(item.calories)} Cal</span>
             </li>
         `).join('');
-    }
-
-    function logCurrentMeal() {
-        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
-        const scaled = scaleFoodToGrams(currentActiveFood, grams);
-        alert(`Logged: ${currentActiveFood.description} - ${grams}g (${Math.round(scaled.calories)} Calories)`);
     }
 </script>
 </body>
