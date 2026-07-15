@@ -84,6 +84,16 @@
             cursor: pointer;
             border-left: 4px solid var(--primary);
         }
+        .result-item {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border-left: 4px solid #adb5bd;
+        }
+        .result-item:hover { border-left-color: var(--primary); }
+        .result-item small { color: #6c757d; }
     </style>
 </head>
 <body>
@@ -95,9 +105,11 @@
     </header>
 
     <div class="search-box">
-        <input type="text" id="upc-input" placeholder="Scan or type UPC Barcode..." inputmode="numeric">
+        <input type="text" id="upc-input" placeholder="Scan UPC or type a food name..." inputmode="text">
         <button onclick="handleScan()">Look Up</button>
     </div>
+
+    <ul id="search-results-container" class="history-list"></ul>
 
     <div id="food-display" class="food-card" style="display: none;">
         <h3 id="food-title" style="margin: 0 0 4px 0;"></h3>
@@ -123,8 +135,8 @@
     </ul>
 </div>
 
-<script src="db.js?v=1.5"></script>
-<script src="USDA_DB_Access.js?v=1.5"></script>
+<script src="db.js?v=1.6"></script>
+<script src="USDA_DB_Access.js?v=1.6"></script>
 <script>
     let currentActiveFood = null;
 
@@ -135,8 +147,23 @@
     });
 
     async function handleScan() {
-        const upc = document.getElementById('upc-input').value;
-        if (!upc) return;
+        const rawInput = document.getElementById('upc-input').value.trim();
+        if (!rawInput) return;
+
+        // Clear any previous search-results picker
+        document.getElementById('search-results-container').innerHTML = '';
+
+        // If the input contains any non-digit character, treat it as a food
+        // name search rather than a barcode. Pure digits (with optional
+        // spaces/dashes from a scanner) go through the barcode flow.
+        const isBarcodeInput = /^[\d\s-]+$/.test(rawInput);
+
+        if (!isBarcodeInput) {
+            await handleNameSearch(rawInput);
+            return;
+        }
+
+        const upc = rawInput;
 
         // 1. Check local DB first for instant recall!
         const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -157,6 +184,40 @@
             console.log("Not cached. Fetching from USDA...");
             await lookupFoodByUPC(upc);
         }
+    }
+
+    // Name search returns multiple candidates (ambiguous by nature), so we
+    // show a picker list instead of jumping straight to the food card.
+    async function handleNameSearch(queryText) {
+        console.log(`Searching by name: "${queryText}"`);
+        const results = await searchFoodsByName(queryText);
+        const container = document.getElementById('search-results-container');
+
+        if (results.length === 0) {
+            container.innerHTML = `<li class="result-item">No matches found for "${queryText}".</li>`;
+            return;
+        }
+
+        container.innerHTML = results.map((item, idx) => `
+            <li class="result-item" onclick='selectSearchResult(${idx})'>
+                <strong>${item.description}</strong><br>
+                <small>${item.brand} &middot; ${Math.round(item.caloriesPer100g || 0)} Cal/100g</small>
+            </li>
+        `).join('');
+
+        // Stash results so the picker's onclick (which only gets a plain index,
+        // to avoid re-serializing full objects into HTML attributes) can find them.
+        window.__lastSearchResults = results;
+    }
+
+    function selectSearchResult(idx) {
+        const item = window.__lastSearchResults[idx];
+        if (!item) return;
+        // Cache it under its fdcId-based key so it shows up in Quick Recall too.
+        saveFoodToLocalCache(item.cacheKey, item);
+        document.getElementById('search-results-container').innerHTML = '';
+        displayFood({ ...item, upc: item.cacheKey });
+        updateHistoryUI();
     }
 
     // Renders a food using its cached per-100g values, scaled to the

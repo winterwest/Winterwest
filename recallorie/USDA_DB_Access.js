@@ -168,6 +168,46 @@ async function lookupFoodOnOpenFoodFacts(cleanUPC) {
 }
 
 /**
+ * Searches USDA by food name/description (not barcode) and returns a list
+ * of candidate foods for the user to pick from, since a name search is
+ * inherently ambiguous (many "banana" entries with different prep/brand).
+ * Each candidate is already in our normalized per-100g shape.
+ */
+async function searchFoodsByName(queryText) {
+    const results = [];
+    try {
+        const params = new URLSearchParams({
+            api_key: USDA_API_KEY,
+            query: queryText,
+            // Search across all data types, not just Branded, so generic
+            // foods like "banana" or "chicken breast" turn up too.
+            pageSize: '15'
+        });
+        const requestUrl = `${USDA_API_URL}?${params.toString()}`;
+        console.log(`Searching USDA by name: "${queryText}"`);
+
+        const response = await fetch(requestUrl, { method: 'GET' });
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`USDA name search returned ${response.status}:`, errText);
+        } else {
+            const data = await response.json();
+            console.log(`USDA name search returned ${data.foods ? data.foods.length : 0} result(s).`);
+            for (const item of (data.foods || [])) {
+                const parsed = extractNutritionData(item);
+                // Use the fdcId as the cache key for name-searched items,
+                // since there's no barcode to key off of.
+                parsed.cacheKey = `fdc-${item.fdcId}`;
+                results.push(parsed);
+            }
+        }
+    } catch (error) {
+        console.error(`Error searching USDA by name: [${error.name}] ${error.message}`, error);
+    }
+    return results;
+}
+
+/**
  * Helper function to parse out the messy USDA nutrient array into a clean JSON object.
  *
  * NOTE ON SCALING: USDA's foodNutrients array for Branded foods is reported
