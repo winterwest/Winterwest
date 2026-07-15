@@ -51,6 +51,17 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
+        .portion-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        .portion-row label { font-size: 0.9rem; color: #6c757d; white-space: nowrap; }
+        .portion-row input { padding: 8px; }
+        .serving-hint { font-size: 0.8rem; color: #6c757d; margin-top: 4px; }
         .macro-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -91,6 +102,13 @@
     <div id="food-display" class="food-card" style="display: none;">
         <h3 id="food-title" style="margin: 0 0 4px 0;"></h3>
         <small id="food-brand" style="color: #6c757d;"></small>
+
+        <div class="portion-row">
+            <label for="portion-weight">Portion (g):</label>
+            <input type="number" id="portion-weight" min="0" step="1" oninput="onPortionChange()">
+        </div>
+        <div id="serving-hint" class="serving-hint"></div>
+
         <div class="macro-grid">
             <div class="macro-box"><span class="macro-val" id="val-cals">0</span>Cals</div>
             <div class="macro-box"><span class="macro-val" id="val-protein">0g</span>Prot</div>
@@ -105,8 +123,8 @@
     </ul>
 </div>
 
-<script src="db.js"></script>
-<script src="USDA_DB_Access.js?v=1.1"></script>
+<script src="db.js?v=1.3"></script>
+<script src="USDA_DB_Access.js?v=1.3"></script>
 <script>
     let currentActiveFood = null;
 
@@ -124,7 +142,7 @@
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
         const localMatch = await new Promise(r => {
-            const req = store.get(upc);
+            const req = store.get(upc.trim().replace(/\D/g, ''));
             req.onsuccess = () => r(req.result);
         });
 
@@ -132,7 +150,7 @@
             console.log("Local hit! Instant recall applied.");
             displayFood(localMatch);
             // Update timestamp to keep it fresh in history
-            saveFoodToLocalCache(upc, localMatch);
+            saveFoodToLocalCache(localMatch.upc, localMatch);
             updateHistoryUI();
         } else {
             // 2. Network fallback to USDA API
@@ -141,15 +159,44 @@
         }
     }
 
+    // Renders a food using its cached per-100g values, scaled to the
+    // portion weight currently in the "Portion (g)" box.
     function displayFood(food) {
         currentActiveFood = food;
         document.getElementById('food-title').innerText = food.description;
         document.getElementById('food-brand').innerText = food.brand;
-        document.getElementById('val-cals').innerText = Math.round(food.calories);
-        document.getElementById('val-protein').innerText = Math.round(food.protein) + 'g';
-        document.getElementById('val-carbs').innerText = Math.round(food.carbs) + 'g';
-        document.getElementById('val-fat').innerText = Math.round(food.fat) + 'g';
+
+        // Default the portion box to the label's serving size (in grams) if we
+        // have one, otherwise fall back to 100g.
+        const defaultGrams = (food.servingSize && (!food.servingSizeUnit || /g|gram/i.test(food.servingSizeUnit)))
+            ? Math.round(food.servingSize)
+            : 100;
+        document.getElementById('portion-weight').value = defaultGrams;
+
+        const hintEl = document.getElementById('serving-hint');
+        hintEl.innerText = food.householdServingText
+            ? `Label serving: ${food.householdServingText}`
+            : (food.servingSize ? `Label serving: ${food.servingSize}${food.servingSizeUnit || ''}` : '');
+
+        renderMacrosForCurrentPortion();
         document.getElementById('food-display').style.display = 'block';
+    }
+
+    // Recomputes displayed macros from the per-100g baseline whenever the
+    // portion weight changes - no network call needed.
+    function renderMacrosForCurrentPortion() {
+        if (!currentActiveFood) return;
+        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
+        const scaled = scaleFoodToGrams(currentActiveFood, grams);
+
+        document.getElementById('val-cals').innerText = Math.round(scaled.calories);
+        document.getElementById('val-protein').innerText = Math.round(scaled.protein) + 'g';
+        document.getElementById('val-carbs').innerText = Math.round(scaled.carbs) + 'g';
+        document.getElementById('val-fat').innerText = Math.round(scaled.fat) + 'g';
+    }
+
+    function onPortionChange() {
+        renderMacrosForCurrentPortion();
     }
 
     // Connects USDA_DB_Access.js lookup directly to the UI
@@ -163,18 +210,21 @@
         alert(`UPC ${upc} was not found. Let's enter it manually.`);
         const name = prompt("Enter food name:");
         if (!name) return;
-        const cals = parseFloat(prompt("Enter calories:") || 0);
-        const prot = parseFloat(prompt("Enter protein (g):") || 0);
-        const carbs = parseFloat(prompt("Enter carbs (g):") || 0);
-        const fat = parseFloat(prompt("Enter fat (g):") || 0);
+        const cals = parseFloat(prompt("Enter calories (per 100g):") || 0);
+        const prot = parseFloat(prompt("Enter protein (g per 100g):") || 0);
+        const carbs = parseFloat(prompt("Enter carbs (g per 100g):") || 0);
+        const fat = parseFloat(prompt("Enter fat (g per 100g):") || 0);
 
         const newFood = {
             description: name,
             brand: "Custom",
-            calories: cals,
-            protein: prot,
-            carbs: carbs,
-            fat: fat
+            caloriesPer100g: cals,
+            proteinPer100g: prot,
+            carbsPer100g: carbs,
+            fatPer100g: fat,
+            servingSize: null,
+            servingSizeUnit: null,
+            householdServingText: null
         };
 
         // Cache manual entry for quick recall in the future!
@@ -192,13 +242,15 @@
                     <strong>${item.description}</strong><br>
                     <small>${item.brand}</small>
                 </div>
-                <span style="font-weight:bold; color:var(--primary);">${Math.round(item.calories)} Cal</span>
+                <span style="font-weight:bold; color:var(--primary);">${Math.round(item.caloriesPer100g || 0)} Cal/100g</span>
             </li>
         `).join('');
     }
 
     function logCurrentMeal() {
-        alert(`Logged: ${currentActiveFood.description} (${Math.round(currentActiveFood.calories)} Calories)`);
+        const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
+        const scaled = scaleFoodToGrams(currentActiveFood, grams);
+        alert(`Logged: ${currentActiveFood.description} - ${grams}g (${Math.round(scaled.calories)} Calories)`);
     }
 </script>
 </body>
