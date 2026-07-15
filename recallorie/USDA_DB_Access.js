@@ -60,10 +60,16 @@ async function lookupFoodByUPC(upc) {
             });
 
             if (!response.ok) {
+                // Read the body before throwing - USDA returns a JSON error
+                // message (e.g. invalid/over-quota API key) that's otherwise lost.
+                const errText = await response.text();
+                console.error(`USDA API returned ${response.status} for "${currentUPC}":`, errText);
                 throw new Error(`API Error: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log(`USDA returned ${data.foods ? data.foods.length : 0} candidate(s) for "${currentUPC}". GTINs seen:`,
+                (data.foods || []).map(f => f.gtinUpc));
 
             if (data.foods && data.foods.length > 0) {
                 // Scan ALL returned candidates for an exact normalized GTIN match,
@@ -110,9 +116,23 @@ async function lookupFoodByUPC(upc) {
 function extractNutritionData(foodItem) {
     const nutrients = foodItem.foodNutrients || [];
 
-    const findNutrientValue = (id) => {
-        const match = nutrients.find(n => n.nutrientId === id || n.id === id);
-        return match ? match.value : 0;
+    // IMPORTANT: the /foods/search endpoint returns an "abridged" nutrient
+    // shape - { number: "208", name: "Energy", amount: 123, unitName: "KCAL" } -
+    // NOT the { nutrientId: 1008, value: 123 } shape used by the /food/{fdcId}
+    // details endpoint. The two use different numbering schemes entirely, so
+    // we have to check both id conventions or the values silently come back
+    // as 0. nutrientNumber below is the old NDB number (energy=208, protein=203,
+    // carbs=205, fat=204); nutrientId is the newer numbering (1008/1003/1005/1004).
+    const findNutrientValue = (nutrientNumber, nutrientId) => {
+        const match = nutrients.find(n =>
+            String(n.number) === String(nutrientNumber) ||
+            String(n.nutrientNumber) === String(nutrientNumber) ||
+            n.nutrientId === nutrientId ||
+            n.id === nutrientId
+        );
+        if (!match) return 0;
+        const val = match.amount !== undefined ? match.amount : match.value;
+        return val || 0;
     };
 
     // servingSize/servingSizeUnit come straight off the product label when present.
@@ -125,10 +145,10 @@ function extractNutritionData(foodItem) {
         fdcId: foodItem.fdcId,
 
         // Per-100g baseline nutrient values (USDA's standard reporting basis)
-        caloriesPer100g: findNutrientValue(1008), // Energy (KCAL)
-        proteinPer100g: findNutrientValue(1003),  // Protein (G)
-        carbsPer100g: findNutrientValue(1005),    // Carbohydrate, by difference (G)
-        fatPer100g: findNutrientValue(1004),      // Total lipid (fat) (G)
+        caloriesPer100g: findNutrientValue(208, 1008), // Energy (KCAL)
+        proteinPer100g: findNutrientValue(203, 1003),  // Protein (G)
+        carbsPer100g: findNutrientValue(205, 1005),    // Carbohydrate, by difference (G)
+        fatPer100g: findNutrientValue(204, 1004),      // Total lipid (fat) (G)
 
         // Label info, used to pre-fill a sensible default portion weight
         servingSize: servingSize,
