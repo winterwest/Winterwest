@@ -1,5 +1,5 @@
 // Configuration constants
-const USDA_API_KEY = 'CVBeeTgj7ZdzecrAXOphkGbTSp41SEPwE1rxWcKn';
+const USDA_API_KEY = 'CVBeeTgj7ZdzecrAXOphkGbTSp41SEPwE1rxWcKn'; 
 const USDA_API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 
 /**
@@ -9,24 +9,16 @@ const USDA_API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 async function lookupFoodByUPC(upc) {
     // 1. Clean the input to ensure it's just numbers
     let cleanUPC = upc.trim().replace(/\D/g, '');
-
+    
     // Auto-pad to 12 digits if it's 11 digits (Standard US UPC-A)
     if (cleanUPC.length === 11) {
         cleanUPC = '0' + cleanUPC;
     }
 
     try {
-        // 2. Fetch data from USDA using an explicit query filter for the barcode
-        // Combining the api_key parameter in the URL with the POST body payload
-        const response = await fetch(`${USDA_API_URL}?api_key=${USDA_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                query: cleanUPC,       // General query fallback
-                dataType: ["Branded"], // Limits results to barcode consumer items
-                pageSize: 1
-            })
-        });
+        // 2. Simple, robust GET request that is universally supported
+        const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${cleanUPC}`;
+        const response = await fetch(getUrl);
 
         if (!response.ok) {
             throw new Error(`API Error: ${response.status}`);
@@ -36,7 +28,7 @@ async function lookupFoodByUPC(upc) {
 
         // 3. Check if any matching foods were returned
         if (data.foods && data.foods.length > 0) {
-            const foodItem = data.foods[0]; // Grab the most accurate match
+            const foodItem = data.foods[0]; // Grab the first matched item
 
             // Extract the key nutritional information
             const parsedFood = extractNutritionData(foodItem);
@@ -48,20 +40,8 @@ async function lookupFoodByUPC(upc) {
             populateFormWithData(parsedFood);
 
         } else {
-            // Let's do an alternate string fallback loop if the strict array array returned empty
-            // This queries it via a direct GET string parameter just in case
-            const getUrl = `${USDA_API_URL}?api_key=${USDA_API_KEY}&query=${cleanUPC}&dataType=Branded`;
-            const getResponse = await fetch(getUrl);
-            const getData = await getResponse.json();
-
-            if (getData.foods && getData.foods.length > 0) {
-                const parsedFood = extractNutritionData(getData.foods[0]);
-                saveFoodToLocalCache(cleanUPC, parsedFood);
-                populateFormWithData(parsedFood);
-            } else {
-                console.warn("UPC not found in USDA database. Redirecting to manual entry.");
-                openManualEntryForm(cleanUPC);
-            }
+            console.warn("UPC not found in USDA database. Redirecting to manual entry.");
+            openManualEntryForm(cleanUPC);
         }
 
     } catch (error) {
