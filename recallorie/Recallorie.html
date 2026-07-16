@@ -256,6 +256,31 @@
             background-color: #ffebee;
         }
 
+        .export-corner {
+            position: fixed;
+            top: calc(env(safe-area-inset-top) + 12px);
+            right: 12px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
+        }
+        .export-btn {
+            background: var(--card-color);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+        }
+        .export-btn:active {
+            background: var(--primary-light);
+        }
+
         .item-row.result {
             border-left: 4px solid #adb5bd;
         }
@@ -278,6 +303,11 @@
     </style>
 </head>
 <body>
+
+<div class="export-corner">
+    <button class="export-btn" onclick="exportFoodDatabase()">⬇ Export</button>
+    <button class="export-btn" onclick="exportEatingHistory()">⬇ History</button>
+</div>
 
 <div class="container">
     <header>
@@ -342,8 +372,8 @@
     </ul>
 </div>
 
-<script src="db.js?v=1.9"></script>
-<script src="USDA_DB_Access.js?v=1.9"></script>
+<script src="db.js?v=1.11"></script>
+<script src="USDA_DB_Access.js?v=1.11"></script>
 <script>
     let currentActiveFood = null;
     let cachedFoodsList = []; // Global holder for local recall filtering
@@ -450,6 +480,57 @@
         const card = document.getElementById('food-display');
         card.style.display = 'block';
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Exports the FULL eating history (every logged meal, every date, all
+    // stored via db.js's LOG_STORE_NAME which nothing ever auto-deletes from)
+    // as a downloadable JSON file - the "how much of food X have I eaten over
+    // time" data.
+    async function exportEatingHistory() {
+        const meals = await getAllLoggedMeals();
+
+        if (meals.length === 0) {
+            alert('No meals have been logged yet - nothing to export.');
+            return;
+        }
+
+        const json = JSON.stringify(meals, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const dateStr = toLocalDateStr(new Date());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recallorie-eating-history-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Exports every food currently in the local cache (everything under
+    // "Quick Recall" - USDA/Open Food Facts lookups and manual entries alike)
+    // as a downloadable JSON file, using each browser's native download flow.
+    async function exportFoodDatabase() {
+        const foods = await getAllCachedFoods();
+
+        if (foods.length === 0) {
+            alert('No foods are cached locally yet - nothing to export.');
+            return;
+        }
+
+        const json = JSON.stringify(foods, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const dateStr = toLocalDateStr(new Date());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recallorie-foods-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // Formats a Date as "YYYY-MM-DDTHH:mm" in LOCAL time, which is what
