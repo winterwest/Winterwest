@@ -35,6 +35,17 @@ function initDB() {
     });
 }
 
+// Formats a Date as YYYY-MM-DD using LOCAL time components (not UTC, unlike
+// toISOString()). Using toISOString() here would be a real bug: logging a
+// meal in the evening in US timezones could get filed under tomorrow's date
+// once converted to UTC.
+function toLocalDateStr(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 // Save a scanned food item to the local barcode cache
 function saveFoodToLocalCache(upc, foodData) {
     if (!db) return;
@@ -60,21 +71,27 @@ function getAllCachedFoods() {
     });
 }
 
-// NEW: Save an eaten meal log entry to IndexedDB
+// Save an eaten meal log entry to IndexedDB. mealData.loggedAtMs is the
+// epoch-ms timestamp the user chose for "when eaten" (defaults to now if
+// not provided). This entry is never auto-deleted, so this store is
+// effectively a permanent history of every food eaten - the "how much of X
+// have I eaten over time" feature can later query this same store filtered
+// by description, without needing any new plumbing.
 function logMealToDB(mealData) {
     return new Promise((resolve, reject) => {
         if (!db) return reject("Database not ready");
         const transaction = db.transaction([LOG_STORE_NAME], 'readwrite');
         const store = transaction.objectStore(LOG_STORE_NAME);
 
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0]; // Generates YYYY-MM-DD local format
+        const loggedAtMs = mealData.loggedAtMs || Date.now();
+        const dateStr = toLocalDateStr(new Date(loggedAtMs));
 
         const entry = {
             ...mealData,
             dateStr: dateStr,
-            timestamp: Date.now()
+            timestamp: loggedAtMs // when the food was actually eaten, not when the record was saved
         };
+        delete entry.loggedAtMs; // redundant with timestamp now that it's split out
 
         const request = store.add(entry);
         request.onsuccess = () => resolve();
@@ -82,7 +99,7 @@ function logMealToDB(mealData) {
     });
 }
 
-// NEW: Get log entries for a specific day
+// Get log entries for a specific day
 function getMealsLoggedForDate(dateStr) {
     return new Promise((resolve, reject) => {
         if (!db) return resolve([]);
@@ -99,7 +116,24 @@ function getMealsLoggedForDate(dateStr) {
     });
 }
 
-// NEW: Delete a logged entry from daily timeline
+// FUTURE FEATURE: full eating history across all dates, for "how much of
+// food X have I eaten over time" type views. Not wired into the UI yet.
+function getAllLoggedMeals() {
+    return new Promise((resolve, reject) => {
+        if (!db) return resolve([]);
+        const transaction = db.transaction([LOG_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(LOG_STORE_NAME);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            const sorted = request.result.sort((a, b) => b.timestamp - a.timestamp);
+            resolve(sorted);
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Delete a logged entry from daily timeline
 function deleteLoggedMealFromDB(id) {
     return new Promise((resolve, reject) => {
         if (!db) return reject();

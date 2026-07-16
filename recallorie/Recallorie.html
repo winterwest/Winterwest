@@ -312,6 +312,12 @@
         </div>
         <div id="serving-hint" class="serving-hint"></div>
 
+        <div class="portion-row">
+            <label for="logged-datetime">Eaten at:</label>
+            <input type="datetime-local" id="logged-datetime" step="60">
+            <button class="btn-primary" style="padding: 10px 14px;" onclick="setLoggedTimeToNow()">Now</button>
+        </div>
+
         <div class="macro-grid">
             <div class="macro-box"><span class="macro-val" id="val-cals">0</span>Cals</div>
             <div class="macro-box"><span class="macro-val" id="val-protein">0g</span>Prot</div>
@@ -336,8 +342,8 @@
     </ul>
 </div>
 
-<script src="db.js?v=1.7"></script>
-<script src="USDA_DB_Access.js?v=1.7"></script>
+<script src="db.js?v=1.8"></script>
+<script src="USDA_DB_Access.js?v=1.8"></script>
 <script>
     let currentActiveFood = null;
     let cachedFoodsList = []; // Global holder for local recall filtering
@@ -438,11 +444,23 @@
             : (food.servingSize ? `Label serving: ${food.servingSize}${food.servingSizeUnit || ''}` : '');
 
         renderMacrosForCurrentPortion();
+        setLoggedTimeToNow();
 
         // Ensure UI displays card and scrolls to it
         const card = document.getElementById('food-display');
         card.style.display = 'block';
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Formats a Date as "YYYY-MM-DDTHH:mm" in LOCAL time, which is what
+    // <input type="datetime-local"> expects as its value.
+    function formatForDatetimeLocal(date) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function setLoggedTimeToNow() {
+        document.getElementById('logged-datetime').value = formatForDatetimeLocal(new Date());
     }
 
     // Recomputes displayed macros from the per-100g baseline whenever the
@@ -495,12 +513,17 @@
     }
 
     // Log the active meal to running daily timeline, using the actual scaled
-    // portion (grams entered), not the per-100g baseline.
+    // portion (grams entered) and the date/time chosen in the "Eaten at" field.
     async function logCurrentMeal() {
         if (!currentActiveFood) return;
 
         const grams = parseFloat(document.getElementById('portion-weight').value) || 0;
         const scaled = scaleFoodToGrams(currentActiveFood, grams);
+
+        const datetimeVal = document.getElementById('logged-datetime').value;
+        // datetime-local gives "YYYY-MM-DDTHH:mm" with no timezone - the Date
+        // constructor interprets that as local time, which is what we want.
+        const loggedAtMs = datetimeVal ? new Date(datetimeVal).getTime() : Date.now();
 
         await logMealToDB({
             description: currentActiveFood.description,
@@ -509,7 +532,8 @@
             protein: scaled.protein,
             carbs: scaled.carbs,
             fat: scaled.fat,
-            portionGrams: grams
+            portionGrams: grams,
+            loggedAtMs: loggedAtMs
         });
 
         // Clean form and focus
