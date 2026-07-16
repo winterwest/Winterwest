@@ -342,8 +342,8 @@
     </ul>
 </div>
 
-<script src="db.js?v=1.8"></script>
-<script src="USDA_DB_Access.js?v=1.8"></script>
+<script src="db.js?v=1.9"></script>
+<script src="USDA_DB_Access.js?v=1.9"></script>
 <script>
     let currentActiveFood = null;
     let cachedFoodsList = []; // Global holder for local recall filtering
@@ -552,7 +552,10 @@
 
     // Core UI Coordinator
     async function refreshAppUI() {
-        const todayStr = new Date().toISOString().split('T')[0];
+        // Use LOCAL date, matching how db.js now stores dateStr. toISOString()
+        // converts to UTC, which runs ahead of US local time in the evening -
+        // that mismatch was making "today" look for tomorrow's entries.
+        const todayStr = toLocalDateStr(new Date());
 
         // 1. Populate Daily Log and Tally
         const logs = await getMealsLoggedForDate(todayStr);
