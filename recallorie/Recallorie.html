@@ -446,9 +446,8 @@
     </ul>
 </div>
 
-<script src="https://unpkg.com/@zxing/[email protected]/umd/index.min.js"></script>
-<script src="db.js?v=1.13"></script>
-<script src="USDA_DB_Access.js?v=1.13"></script>
+<script src="db.js?v=1.14"></script>
+<script src="USDA_DB_Access.js?v=1.14"></script>
 <script>
     let currentActiveFood = null;
     let cachedFoodsList = []; // Global holder for local recall filtering
@@ -462,10 +461,50 @@
     // Requires HTTPS (or localhost) - getUserMedia is blocked on plain HTTP,
     // especially on iOS Safari.
     let zxingReader = null;
+    let zxingLoadPromise = null;
 
-    function openScanner() {
-        if (typeof ZXing === 'undefined') {
-            alert('Barcode scanner library failed to load. Check your internet connection and try again.');
+    // Loads the ZXing UMD bundle dynamically, trying a second CDN if the
+    // first is blocked (carrier/network filtering, ad/content blockers, or a
+    // CSP header on the host can all silently kill a single <script src>).
+    function loadZXing() {
+        if (window.ZXing) return Promise.resolve();
+        if (zxingLoadPromise) return zxingLoadPromise;
+
+        const sources = [
+            'https://unpkg.com/@zxing/[email protected]/umd/index.min.js',
+            'https://cdn.jsdelivr.net/npm/@zxing/[email protected]/umd/index.min.js'
+        ];
+
+        zxingLoadPromise = (async () => {
+            let lastErr;
+            for (const src of sources) {
+                try {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = src;
+                        s.onload = resolve;
+                        s.onerror = () => reject(new Error(`Failed to load ${src}`));
+                        document.head.appendChild(s);
+                    });
+                    if (window.ZXing) return;
+                } catch (e) {
+                    console.warn(e.message);
+                    lastErr = e;
+                }
+            }
+            zxingLoadPromise = null; // allow retrying on a later tap
+            throw lastErr || new Error('ZXing failed to load from all sources');
+        })();
+
+        return zxingLoadPromise;
+    }
+
+    async function openScanner() {
+        try {
+            await loadZXing();
+        } catch (e) {
+            console.error('ZXing load error:', e);
+            alert('Barcode scanner library could not be loaded from any CDN. This can happen if your network or an ad/content blocker is blocking unpkg.com and cdn.jsdelivr.net. Try switching networks (e.g. WiFi vs. cellular) or disabling content blockers for this site.');
             return;
         }
 
